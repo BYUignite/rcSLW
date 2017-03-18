@@ -11,13 +11,13 @@ class rcslw():
 
     #--------------------------------------------------------------------------
 
-    def __init__(self):
+    def __init__(self, P, nGG):
 
         s = self
 
-        s.P    = 1.5            # pressure (atm)
+        s.P    = P              # pressure (atm)
         s.Tref = 1000.0         # reference temperature (Tb in Falbdf) (K)
-        s.nGG  = 4              # number of grey gases not including the clear gas 
+        s.nGG  = nGG            # number of grey gases not including the clear gas 
         s.Fmin = 0.02           
         s.Fmax = 0.98
 
