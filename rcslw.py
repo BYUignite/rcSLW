@@ -43,6 +43,7 @@ class rcslw():
 
     def get_k_a(self, sp, Tg, Y, Nconc):
         '''
+        THIS IS THE CLASS INTERFACE FUNCTION
         return the local gray gas coefficients (k) and the local weights (a).
         Function only works for co2 or co or h2o, not mixtures.
         sp:    input; string; species name: one of 'co2', 'co', 'h2o'
