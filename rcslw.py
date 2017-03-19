@@ -41,37 +41,37 @@ class rcslw():
 
     #--------------------------------------------------------------------------
 
-    def get_k_a(self, sp, Tg, Y, Nconc):
+    def get_k_a(self, Tg, Nconc, Yco2, Yco, Yh2o):
         '''
         THIS IS THE CLASS INTERFACE FUNCTION
         return the local gray gas coefficients (k) and the local weights (a).
         Function only works for co2 or co or h2o, not mixtures.
-        sp:    input; string; species name: one of 'co2', 'co', 'h2o'
         Tg:    input; float; gas temperature
-        Y:     input; float; mole fraction of co2 or co or h2o
         Nconc: input; float; molar concentration: mol/m3
+        Yco2:  input; float; mole fraction co2
+        Yco:   input; float; mole fraction co
+        Yh2o:  input; float; mole fraction h2o
         '''
 
         s = self
 
-        Yh2o = Y if sp=='h2o' else None
-
-        C  = np.empty(s.nGG)       # C = C(F, \phi_{loc}, Tref)
+        C  = np.empty(s.nGG)      # C = C(F, \phi_{loc}, Tref)
         Ct = np.empty(s.nGGa)     # \tilde{C} = C(\tilde{F}, \phi_{loc}, Tref)
 
         for j in range(s.nGG):
-            C[j] = s.get_FI_albdf(sp, s.F_pts[j], Tg, s.Tref, Yh2o)
+            C[j] = s.get_FI_albdf(sp,  s.F_pts[j],  Tg, s.Tref, Yco2, Yco, Yh2o)
 
         for j in range(s.nGGa):
-            Ct[j] = s.get_FI_albdf(sp, s.Ft_pts[j], Tg, s.Tref, Yh2o)
+            Ct[j] = s.get_FI_albdf(sp, s.Ft_pts[j], Tg, s.Tref, Yco2, Yco, Yh2o)
 
         k = np.empty(s.nGGa)
         k[0] = 0.0
-        k[1:] = Nconc * Y_coco2h2o * C
+        k[1:] = Nconc * C                    # todo: check this equation for multi-component (?)
+        #k[1:] = Nconc * C * (Yco2+Yco+Yh2o)  # todo: check this equation for multi-component (?)
 
         FCt = np.empty(s.nGGa)
         for j in range(s.nGGa):
-            FCt[j] = s.get_F_albdf(sp, Ct[j], Tg, Tg)
+            FCt[j] = s.get_F_albdf(Ct[j], Tg, Tg, Yco2, Yco, Yh2o)
 
         a = np.empty(s.nGGa)
         a[0]  = FCt[0]
@@ -81,63 +81,78 @@ class rcslw():
 
     #--------------------------------------------------------------------------
 
-    def get_FI_albdf(self, sp, F, Tg, Tb, Yh2o=None ):
+    def get_F_albdf(self, C, Tg, Tb, Yco2, Yco, Yh2o):
         '''
-        Inverse F_albdf: pass in F and get out C.
-        sp:   input; string; one of 'co2', 'co', 'h2o'
         C:    input; float; cross section
         Tg:   input; float; gas temperature
         Tb:   input; float; black temperature
-        Yh2o: input; float; h2o mole fraction (only used for the h2o table)
-        returns C.
-        '''
-
-        s = self
-
-        if Tg < s.Tg_table[0] : Tg = s.Tg_table[0]
-        if Tg > s.Tg_table[-1]: Tg = s.Tg_table[-1]
-        if Tb < s.Tb_table[0] : Tb = s.Tb_table[0]
-        if Tb > s.Tb_table[-1]: Tb = s.Tb_table[-1]
-        if Yh2o:
-            if Yh2o < s.Yh2o_table[0] : Tb = s.Yh2o_table[0]
-            if Yh2o > s.Yh2o_table[-1]: Tb = s.Yh2o_table[-1]
-
-        def Func(C):
-            if C  < s.C_table[0]  : C  = s.C_table[0]
-            if C  > s.C_table[-1] : C  = s.C_table[-1]
-            pt = np.array([Yh2o, Tg, Tb, C]) if Yh2o else np.array([Tg, Tb, C])
-            return s.interp_F_albdf[sp](pt) - F
-
-        return fsolve(Func, s.C_table[30])[0]
-
-
-    #--------------------------------------------------------------------------
-
-    def get_F_albdf(self, sp, C, Tg, Tb, Yh2o=None ):
-        '''
-        sp:   input; string; one of 'co2', 'co', 'h2o'
-        C:    input; float; cross section
-        Tg:   input; float; gas temperature
-        Tb:   input; float; black temperature
-        Yh2o: input; float; h2o mole fraction (only used for the h2o table)
+        Yco2: input; float; mole fraction co2
+        Yco:  input; float; mole fraction co
+        Yh2o: input; float; mole fraction h2o
         returns the albdf function F
         '''
 
         s = self
 
-        if C  < s.C_table[0]  : C  = s.C_table[0]
-        if C  > s.C_table[-1] : C  = s.C_table[-1]
-        if Tg < s.Tg_table[0] : Tg = s.Tg_table[0]
-        if Tg > s.Tg_table[-1]: Tg = s.Tg_table[-1]
-        if Tb < s.Tb_table[0] : Tb = s.Tb_table[0]
-        if Tb > s.Tb_table[-1]: Tb = s.Tb_table[-1]
-        if Yh2o:
-            if Yh2o < s.Yh2o_table[0] : Tb = s.Yh2o_table[0]
-            if Yh2o > s.Yh2o_table[-1]: Tb = s.Yh2o_table[-1]
+        if Yco2 <= 1E-12: Yco2 = 1E-12
+        if Yco  <= 1E-12: Yco  = 1E-12
+        if Yh2o <= 1E-12: Yh2o = 1E-12
 
-        pt = np.array([Yh2o, Tg, Tb, C]) if Yh2o else np.array([Tg, Tb, C])
+        if C    < s.C_table[0]    : C    = s.C_table[0]
+        if C    > s.C_table[-1]   : C    = s.C_table[-1]
+        if Tg   < s.Tg_table[0]   : Tg   = s.Tg_table[0]
+        if Tg   > s.Tg_table[-1]  : Tg   = s.Tg_table[-1]
+        if Tb   < s.Tb_table[0]   : Tb   = s.Tb_table[0]
+        if Tb   > s.Tb_table[-1]  : Tb   = s.Tb_table[-1]
+        if Yh2o < s.Yh2o_table[0] : Yh2o = s.Yh2o_table[0]
+        if Yh2o > s.Yh2o_table[-1]: Yh2o = s.Yh2o_table[-1]
 
-        return s.interp_F_albdf[sp](pt)
+        F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, C/Yco2]))
+        F_co  = s.interp_F_albdf['co']( np.array([Tg, Tb, C/Yco ]))
+        F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, C/Yh2o]))
+
+        return F_co2 * F_co * F_h2o
+
+    #--------------------------------------------------------------------------
+
+    def get_FI_albdf(self, F, Tg, Tb, Yco2, Yco, Yh2o):
+        '''
+        Inverse F_albdf: pass in F and get out C.
+        C:    input; float; cross section
+        Tg:   input; float; gas temperature
+        Tb:   input; float; black temperature
+        Yco2: input; float; mole fraction co2
+        Yco:  input; float; mole fraction co
+        Yh2o: input; float; mole fraction h2o
+        returns C.
+        '''
+
+        s = self
+
+        if Yco2 <= 1E-12: Yco2 = 1E-12
+        if Yco  <= 1E-12: Yco  = 1E-12
+        if Yh2o <= 1E-12: Yh2o = 1E-12
+
+        if Tg   < s.Tg_table[0]   : Tg   = s.Tg_table[0]
+        if Tg   > s.Tg_table[-1]  : Tg   = s.Tg_table[-1]
+        if Tb   < s.Tb_table[0]   : Tb   = s.Tb_table[0]
+        if Tb   > s.Tb_table[-1]  : Tb   = s.Tb_table[-1]
+        if Yh2o < s.Yh2o_table[0] : Yh2o = s.Yh2o_table[0]
+        if Yh2o > s.Yh2o_table[-1]: Yh2o = s.Yh2o_table[-1]
+
+        def Func(C):
+            if C  < s.C_table[0]  : C  = s.C_table[0]
+            if C  > s.C_table[-1] : C  = s.C_table[-1]
+            pt = np.array([Yh2o, Tg, Tb, C]) if Yh2o else np.array([Tg, Tb, C])
+
+            F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, C/Yco2]))
+            F_co  = s.interp_F_albdf['co']( np.array([Tg, Tb, C/Yco ]))
+            F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, C/Yh2o]))
+
+            return (F_co2 * F_co * F_h2o) - F
+
+        return fsolve(Func, s.C_table[int(s.nC/2)])[0]
+
 
     #--------------------------------------------------------------------------
 
