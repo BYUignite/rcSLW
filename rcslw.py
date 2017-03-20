@@ -59,10 +59,10 @@ class rcslw():
         Ct = np.empty(s.nGGa)     # \tilde{C} = C(\tilde{F}, \phi_{loc}, Tref)
 
         for j in range(s.nGG):
-            C[j] = s.get_FI_albdf(sp,  s.F_pts[j],  Tg, s.Tref, Yco2, Yco, Yh2o)
+            C[j] =  s.get_FI_albdf(s.F_pts[j],  Tg, s.Tref, Yco2, Yco, Yh2o)
 
         for j in range(s.nGGa):
-            Ct[j] = s.get_FI_albdf(sp, s.Ft_pts[j], Tg, s.Tref, Yco2, Yco, Yh2o)
+            Ct[j] = s.get_FI_albdf(s.Ft_pts[j], Tg, s.Tref, Yco2, Yco, Yh2o)
 
         k = np.empty(s.nGGa)
         k[0] = 0.0
@@ -94,12 +94,10 @@ class rcslw():
 
         s = self
 
-        if Yco2 <= 1E-12: Yco2 = 1E-12
-        if Yco  <= 1E-12: Yco  = 1E-12
-        if Yh2o <= 1E-12: Yh2o = 1E-12
+        if Yco2 <= 1E-20: Yco2 = 1E-20
+        if Yco  <= 1E-20: Yco  = 1E-20
+        if Yh2o <= 1E-20: Yh2o = 1E-20
 
-        if C    < s.C_table[0]    : C    = s.C_table[0]
-        if C    > s.C_table[-1]   : C    = s.C_table[-1]
         if Tg   < s.Tg_table[0]   : Tg   = s.Tg_table[0]
         if Tg   > s.Tg_table[-1]  : Tg   = s.Tg_table[-1]
         if Tb   < s.Tb_table[0]   : Tb   = s.Tb_table[0]
@@ -107,9 +105,20 @@ class rcslw():
         if Yh2o < s.Yh2o_table[0] : Yh2o = s.Yh2o_table[0]
         if Yh2o > s.Yh2o_table[-1]: Yh2o = s.Yh2o_table[-1]
 
-        F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, C/Yco2]))
-        F_co  = s.interp_F_albdf['co']( np.array([Tg, Tb, C/Yco ]))
-        F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, C/Yh2o]))
+        CYco2 = C/Yco2
+        CYco  = C/Yco
+        CYh2o = C/Yh2o
+
+        if CYco2 < s.C_table[0]  : CYco2 = s.C_table[0]
+        if CYco2 > s.C_table[-1] : CYco2 = s.C_table[-1]
+        if CYco  < s.C_table[0]  : CYco  = s.C_table[0]
+        if CYco  > s.C_table[-1] : CYco  = s.C_table[-1]
+        if CYh2o < s.C_table[0]  : CYh2o = s.C_table[0]
+        if CYh2o > s.C_table[-1] : CYh2o = s.C_table[-1]
+
+        F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, CYco2]))[0]
+        F_co  = s.interp_F_albdf['co']( np.array([Tg, Tb, CYco ]))[0]
+        F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o]))[0]
 
         return F_co2 * F_co * F_h2o
 
@@ -129,9 +138,9 @@ class rcslw():
 
         s = self
 
-        if Yco2 <= 1E-12: Yco2 = 1E-12
-        if Yco  <= 1E-12: Yco  = 1E-12
-        if Yh2o <= 1E-12: Yh2o = 1E-12
+        if Yco2 <= 1E-20: Yco2 = 1E-20
+        if Yco  <= 1E-20: Yco  = 1E-20
+        if Yh2o <= 1E-20: Yh2o = 1E-20
 
         if Tg   < s.Tg_table[0]   : Tg   = s.Tg_table[0]
         if Tg   > s.Tg_table[-1]  : Tg   = s.Tg_table[-1]
@@ -140,17 +149,32 @@ class rcslw():
         if Yh2o < s.Yh2o_table[0] : Yh2o = s.Yh2o_table[0]
         if Yh2o > s.Yh2o_table[-1]: Yh2o = s.Yh2o_table[-1]
 
-        def Func(C):
-            if C  < s.C_table[0]  : C  = s.C_table[0]
-            if C  > s.C_table[-1] : C  = s.C_table[-1]
-            pt = np.array([Yh2o, Tg, Tb, C]) if Yh2o else np.array([Tg, Tb, C])
+        def Func(logC):
 
-            F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, C/Yco2]))
-            F_co  = s.interp_F_albdf['co']( np.array([Tg, Tb, C/Yco ]))
-            F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, C/Yh2o]))
+            C = 10**logC
+
+            CYco2 = C[0]/Yco2
+            CYco  = C[0]/Yco
+            CYh2o = C[0]/Yh2o
+
+            if CYco2 < s.C_table[0]  : CYco2 = s.C_table[0]
+            if CYco2 > s.C_table[-1] : CYco2 = s.C_table[-1]
+            if CYco  < s.C_table[0]  : CYco  = s.C_table[0]
+            if CYco  > s.C_table[-1] : CYco  = s.C_table[-1]
+            if CYh2o < s.C_table[0]  : CYh2o = s.C_table[0]
+            if CYh2o > s.C_table[-1] : CYh2o = s.C_table[-1]
+
+            F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, CYco2]))[0]
+            F_co  = s.interp_F_albdf['co']( np.array([Tg, Tb, CYco ]))[0]
+            F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o]))[0]
+
+            print(F, F_co2, F_co, F_h2o, Tg, Tb, Yco2, Yco, Yh2o)
+            print("    here     ", C, CYco2, CYco, CYh2o)
 
             return (F_co2 * F_co * F_h2o) - F
-
+        
+        print(fsolve(Func, np.log10(s.C_table[int(s.nC/2)]))) # doldb
+        exit()#doldb
         return fsolve(Func, s.C_table[int(s.nC/2)])[0]
 
 
@@ -164,6 +188,8 @@ class rcslw():
         s = self
 
         x,w = leggauss(s.nGG)
+        x = (x+1)/2   # convert interval from [-1,1] to [0,1]
+        w = w/2       # convert interval from [-1,1] to [0,1]
 
         s.Ft_pts = np.empty(s.nGGa)          # \tilde{F} grid
         s.Ft_pts[0] = s.Fmin
@@ -185,7 +211,7 @@ class rcslw():
 
         s = self
 
-        s.eval_F_albdf = {}
+        s.interp_F_albdf = {}
 
         sp = 'co'
         s.interp_F_albdf[sp] = RegularGridInterpolator((s.Tg_table, s.Tb_table, s.C_table), s.Falbdf[sp])
@@ -206,7 +232,7 @@ class rcslw():
 
         s = self
 
-        if not (s.Pfiles[0] <= s.P <= s.Pfiles[-1]):
+        if not (s.P_table[0] <= s.P <= s.P_table[-1]):
             raise ValueError('Pressure = ', s.P, 'atm is out of range')
 
         if s.P==s.P_table[0]:
@@ -220,8 +246,8 @@ class rcslw():
             P1 = s.P_table[i1]
             P2 = s.P_table[i2]
         else:
-            P1 = s.P_table[P_table <= s.P][-1]
-            P2 = s.P_table[P_table >= s.P][0]
+            P1 = s.P_table[s.P_table <  s.P][-1]
+            P2 = s.P_table[s.P_table >= s.P][0]
             i1 = np.where(s.P_table==P1)[0][0]
             i2 = np.where(s.P_table==P2)[0][0]
 
@@ -232,35 +258,66 @@ class rcslw():
         #------------- CO2
 
         file1 = 'co2_p' + str(P1).replace('.', '_') + '.txt'
-        file1 = 'co2_p' + str(P2).replace('.', '_') + '.txt'
+        file2 = 'co2_p' + str(P2).replace('.', '_') + '.txt'
 
         F1 = np.loadtxt('ALBDF_Tables/'+file1)
         F2 = np.loadtxt('ALBDF_Tables/'+file2)
 
         s.Falbdf['co2'] = F1*(1-f) + F2*(f)
-        s.Falbdf['co2'] = np.reshape(np.Falbdf['co2'], (s.nTg, s.nTb, s.nC))
+        s.Falbdf['co2'] = np.reshape(s.Falbdf['co2'], (s.nTg, s.nTb, s.nC))
 
         #------------- CO 
 
         file1 = 'co_p' + str(P1).replace('.', '_') + '.txt'
-        file1 = 'co_p' + str(P2).replace('.', '_') + '.txt'
+        file2 = 'co_p' + str(P2).replace('.', '_') + '.txt'
 
         F1 = np.loadtxt('ALBDF_Tables/'+file1)
         F2 = np.loadtxt('ALBDF_Tables/'+file2)
 
         s.Falbdf['co'] = F1*(1-f) + F2*(f)
-        s.Falbdf['co'] = np.reshape(np.Falbdf['co'], (s.nTg, s.nTb, s.nC))
+        s.Falbdf['co'] = np.reshape(s.Falbdf['co'], (s.nTg, s.nTb, s.nC))
 
         #------------- H2O
 
         file1 = 'h2o_p' + str(P1).replace('.', '_') + '.txt'
-        file1 = 'h2o_p' + str(P2).replace('.', '_') + '.txt'
+        file2 = 'h2o_p' + str(P2).replace('.', '_') + '.txt'
 
         F1 = np.loadtxt('ALBDF_Tables/'+file1)
         F2 = np.loadtxt('ALBDF_Tables/'+file2)
 
         s.Falbdf['h2o'] = F1*(1-f) + F2*(f)
-        s.Falbdf['h2o'] = np.reshape(np.Falbdf['h2o'], (S.ny_h2o, s.nTg, s.nTb, s.nC))
+        s.Falbdf['h2o'] = np.reshape(s.Falbdf['h2o'], (s.ny_h2o, s.nTg, s.nTb, s.nC))
 
     #--------------------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+
+P = 1.0
+Tg = 1500
+Tb = 1500
+Yco2 = 1.0 
+Yco = 0.0
+Yh2o = 0.0
+C = 0.5*Yco2
+Nconc = 8.0
+
+slw = rcslw(2, 3)
+
+#F = slw.get_F_albdf(C, Tg, Tb, Yco2, Yco, Yh2o)
+#C = slw.get_FI_albdf(F, Tg, Tb, Yco2, Yco, Yh2o)
+#print(F, C)
+
+#for i in range(slw.nC):
+#    print(slw.C_table[i], slw.Falbdf['co2'][12,7,i])
+#exit()
+
+k, a = slw.get_k_a(Tg, Nconc, Yco2, Yco, Yh2o)
+
+print(k)
+print(a)
+
+
+
+
 
