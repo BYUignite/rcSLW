@@ -20,6 +20,8 @@ class rcslw():
         s.nGG  = nGG            # number of grey gases not including the clear gas 
         s.Fmin = 0.02           
         s.Fmax = 0.98
+        s.Cmin = 0.0001
+        s.Cmax = 1000.0   
 
         s.nGGa = s.nGG+1        # number of grey gases not including the clear gas 
 
@@ -66,7 +68,7 @@ class rcslw():
 
         k = np.empty(s.nGGa)
         k[0] = 0.0
-        k[1:] = Nconc * C                    # todo: check this equation for multi-component (?)
+        k[1:] = Nconc * C                     # todo: check this equation for multi-component (?)
         #k[1:] = Nconc * C * (Yco2+Yco+Yh2o)  # todo: check this equation for multi-component (?)
 
         FCt = np.empty(s.nGGa)
@@ -138,6 +140,11 @@ class rcslw():
 
         s = self
 
+        Fmin = s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o)     # todo: check this
+        Fmax = s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o)     # todo: check this
+        if F<Fmin or F>Fmax:                                      # todo: check this
+            return 0.0                                            # todo: check this
+
         if Yco2 <= 1E-20: Yco2 = 1E-20
         if Yco  <= 1E-20: Yco  = 1E-20
         if Yh2o <= 1E-20: Yh2o = 1E-20
@@ -149,9 +156,7 @@ class rcslw():
         if Yh2o < s.Yh2o_table[0] : Yh2o = s.Yh2o_table[0]
         if Yh2o > s.Yh2o_table[-1]: Yh2o = s.Yh2o_table[-1]
 
-        def Func(logC):
-
-            C = 10**logC
+        def Func(C):
 
             CYco2 = C[0]/Yco2
             CYco  = C[0]/Yco
@@ -168,13 +173,8 @@ class rcslw():
             F_co  = s.interp_F_albdf['co']( np.array([Tg, Tb, CYco ]))[0]
             F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o]))[0]
 
-            print(F, F_co2, F_co, F_h2o, Tg, Tb, Yco2, Yco, Yh2o)
-            print("    here     ", C, CYco2, CYco, CYh2o)
-
             return (F_co2 * F_co * F_h2o) - F
         
-        print(fsolve(Func, np.log10(s.C_table[int(s.nC/2)]))) # doldb
-        exit()#doldb
         return fsolve(Func, s.C_table[int(s.nC/2)])[0]
 
 
@@ -187,9 +187,9 @@ class rcslw():
 
         s = self
 
-        x,w = leggauss(s.nGG)
-        x = (x+1)/2   # convert interval from [-1,1] to [0,1]
-        w = w/2       # convert interval from [-1,1] to [0,1]
+        x,w = leggauss(int(s.nGG * 2))
+        x   = x[s.nGG:]
+        w   = w[s.nGG:]
 
         s.Ft_pts = np.empty(s.nGGa)          # \tilde{F} grid
         s.Ft_pts[0] = s.Fmin
