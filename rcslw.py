@@ -175,7 +175,7 @@ class rcslw():
 
             return (F_co2 * F_co * F_h2o) - F
         
-        return fsolve(Func, s.C_table[int(s.nC/2)])[0]
+        return fsolve(Func, s.C_table[int(s.nC/2)], xtol=1E-3)[0]
 
 
     #--------------------------------------------------------------------------
