@@ -11,15 +11,13 @@ class rcslw():
 
     #--------------------------------------------------------------------------
 
-    def __init__(self, P, nGG):
+    def __init__(self, P, nGG, Tg, Yco2, Yco, Yh2o):
 
         s = self
 
         s.P    = P              # pressure (atm)
         s.Tref = 1000.0         # reference temperature (Tb in Falbdf) (K)
         s.nGG  = nGG            # number of grey gases not including the clear gas 
-        s.Fmin = 0.02           
-        s.Fmax = 0.98
         s.Cmin = 0.0001
         s.Cmax = 1000.0   
 
@@ -39,6 +37,9 @@ class rcslw():
 
         s.set_Falbdf_co2_co_h2o_at_P()
         s.set_interpolating_functions()
+
+        s.Fmin = 0.0   # s.get_F_albdf(s.Cmin, Tg, Tg, Yco2, Yco, Yh2o)     # todo: check this
+        s.Fmax = 0.999 # s.get_F_albdf(s.Cmax, Tg, Tg, Yco2, Yco, Yh2o)     # todo: check this
         s.set_Fpts()
 
     #--------------------------------------------------------------------------
@@ -47,7 +48,6 @@ class rcslw():
         '''
         THIS IS THE CLASS INTERFACE FUNCTION
         return the local gray gas coefficients (k) and the local weights (a).
-        Function only works for co2 or co or h2o, not mixtures.
         Tg:    input; float; gas temperature
         Nconc: input; float; molar concentration: mol/m3
         Yco2:  input; float; mole fraction co2
@@ -68,8 +68,7 @@ class rcslw():
 
         k = np.empty(s.nGGa)
         k[0] = 0.0
-        k[1:] = Nconc * C                     # todo: check this equation for multi-component (?)
-        #k[1:] = Nconc * C * (Yco2+Yco+Yh2o)  # todo: check this equation for multi-component (?)
+        k[1:] = Nconc * C                     
 
         FCt = np.empty(s.nGGa)
         for j in range(s.nGGa):
@@ -140,10 +139,68 @@ class rcslw():
 
         s = self
 
-        Fmin = s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o)     # todo: check this
-        Fmax = s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o)     # todo: check this
-        if F<Fmin or F>Fmax:                                      # todo: check this
-            return 0.0                                            # todo: check this
+        Fmin = s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o)     
+        Fmax = s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o)   
+        if F<Fmin: 
+            return 0.0   
+        if F>Fmax:
+            return 1.0
+
+        if Yco2 <= 1E-20: Yco2 = 1E-20
+        if Yco  <= 1E-20: Yco  = 1E-20
+        if Yh2o <= 1E-20: Yh2o = 1E-20
+
+        if Tg   < s.Tg_table[0]   : Tg   = s.Tg_table[0]
+        if Tg   > s.Tg_table[-1]  : Tg   = s.Tg_table[-1]
+        if Tb   < s.Tb_table[0]   : Tb   = s.Tb_table[0]
+        if Tb   > s.Tb_table[-1]  : Tb   = s.Tb_table[-1]
+        if Yh2o < s.Yh2o_table[0] : Yh2o = s.Yh2o_table[0]
+        if Yh2o > s.Yh2o_table[-1]: Yh2o = s.Yh2o_table[-1]
+
+        def Func(C):
+
+            CYco2 = C[0]/Yco2
+            CYco  = C[0]/Yco
+            CYh2o = C[0]/Yh2o
+
+            if CYco2 < s.C_table[0]  : CYco2 = s.C_table[0]
+            if CYco2 > s.C_table[-1] : CYco2 = s.C_table[-1]
+            if CYco  < s.C_table[0]  : CYco  = s.C_table[0]
+            if CYco  > s.C_table[-1] : CYco  = s.C_table[-1]
+            if CYh2o < s.C_table[0]  : CYh2o = s.C_table[0]
+            if CYh2o > s.C_table[-1] : CYh2o = s.C_table[-1]
+
+            F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, CYco2]))[0]
+            F_co  = s.interp_F_albdf['co']( np.array([Tg, Tb, CYco ]))[0]
+            F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o]))[0]
+
+            return (F_co2 * F_co * F_h2o) - F
+        
+        return fsolve(Func, s.C_table[int(s.nC/2)], xtol=1E-3)[0]
+
+
+    #--------------------------------------------------------------------------
+
+    def get_FI_albdf_new(self, F, Tg, Tb, Yco2, Yco, Yh2o):
+        '''
+        Inverse F_albdf: pass in F and get out C.
+        C:    input; float; cross section
+        Tg:   input; float; gas temperature
+        Tb:   input; float; black temperature
+        Yco2: input; float; mole fraction co2
+        Yco:  input; float; mole fraction co
+        Yh2o: input; float; mole fraction h2o
+        returns C.
+        '''
+
+        s = self
+
+        Fmin = s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o)     
+        Fmax = s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o)    
+        if F<Fmin: 
+            return 0.0   
+        if F>Fmax:
+            return 1.0
 
         if Yco2 <= 1E-20: Yco2 = 1E-20
         if Yco  <= 1E-20: Yco  = 1E-20
@@ -195,7 +252,7 @@ class rcslw():
         s.Ft_pts[0] = s.Fmin
         s.Ft_pts[1:] = s.Fmin + (s.Fmax-s.Fmin)*np.cumsum(w)
 
-        s.F_pts = s.Fmin + x*(s.Fmax-s.Fmin)  # F grid  (values between \tild{F} pnts
+        s.F_pts = s.Fmin + x*(s.Fmax-s.Fmin)  # F grid (vals bet. \tild{F} pnts
 
     #--------------------------------------------------------------------------
 
@@ -214,11 +271,14 @@ class rcslw():
         s.interp_F_albdf = {}
 
         sp = 'co'
-        s.interp_F_albdf[sp] = RegularGridInterpolator((s.Tg_table, s.Tb_table, s.C_table), s.Falbdf[sp])
+        s.interp_F_albdf[sp] = RegularGridInterpolator(
+                               (s.Tg_table, s.Tb_table, s.C_table), s.Falbdf[sp])
         sp = 'co2'
-        s.interp_F_albdf[sp] = RegularGridInterpolator((s.Tg_table, s.Tb_table, s.C_table), s.Falbdf[sp])
+        s.interp_F_albdf[sp] = RegularGridInterpolator(
+                               (s.Tg_table, s.Tb_table, s.C_table), s.Falbdf[sp])
         sp = 'h2o'
-        s.interp_F_albdf[sp] = RegularGridInterpolator((s.Yh2o_table, s.Tg_table, s.Tb_table, s.C_table), s.Falbdf[sp])
+        s.interp_F_albdf[sp] = RegularGridInterpolator(
+                               (s.Yh2o_table, s.Tg_table, s.Tb_table, s.C_table), s.Falbdf[sp])
 
     #--------------------------------------------------------------------------
 
@@ -286,24 +346,35 @@ class rcslw():
         F2 = np.loadtxt('ALBDF_Tables/'+file2)
 
         s.Falbdf['h2o'] = F1*(1-f) + F2*(f)
-        s.Falbdf['h2o'] = np.reshape(s.Falbdf['h2o'], (s.ny_h2o, s.nTg, s.nTb, s.nC))
+        s.Falbdf['h2o'] = np.reshape(s.Falbdf['h2o'],(s.ny_h2o,s.nTg,s.nTb,s.nC))
 
     #--------------------------------------------------------------------------
 
 
 #------------------------------------------------------------------------------
 
-P = 1.0
-Tg = 1500
-Tb = 1500
-Yco2 = 1.0 
-Yco = 0.0
-Yh2o = 0.0
-C = 0.5*Yco2
-Nconc = 8.0
+P     = 1.0
+Tg    = 1000
+Yco2  = 0.9   
+Yco   = 0.1  
+Yh2o  = 0.00 
+nGG   = 3
 
-slw = rcslw(2, 3)
+Nconc = P*101325/8.31446/Tg
 
+slw   = rcslw(P, nGG, Tg, Yco2, Yco, Yh2o)
+
+k, a = slw.get_k_a(Tg, Nconc, Yco2, Yco, Yh2o)
+
+print(k)
+print(a)
+
+
+
+
+
+#Tb = 1500
+#C = 0.5*Yco2
 #F = slw.get_F_albdf(C, Tg, Tb, Yco2, Yco, Yh2o)
 #C = slw.get_FI_albdf(F, Tg, Tb, Yco2, Yco, Yh2o)
 #print(F, C)
@@ -311,11 +382,6 @@ slw = rcslw(2, 3)
 #for i in range(slw.nC):
 #    print(slw.C_table[i], slw.Falbdf['co2'][12,7,i])
 #exit()
-
-k, a = slw.get_k_a(Tg, Nconc, Yco2, Yco, Yh2o)
-
-print(k)
-print(a)
 
 
 
