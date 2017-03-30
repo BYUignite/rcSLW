@@ -17,11 +17,11 @@ class rcslw():
 
         s.P    = P              # pressure (atm)
         s.Tref = 1000.0         # reference temperature (Tb in Falbdf) (K)
-        s.nGG  = nGG            # number of grey gases not including the clear gas 
+        s.nGG  = nGG            # number of grey gases not including the clear gas
         s.Cmin = 0.0001
-        s.Cmax = 1000.0   
+        s.Cmax = 100.0
 
-        s.nGGa = s.nGG+1        # number of grey gases not including the clear gas 
+        s.nGGa = s.nGG+1        # number of grey gases including the clear ga
 
         s.P_table    = np.array([0.1, 0.25, 0.5, 1, 2, 4, 8, 15, 30, 50])
         s.C_table    = 0.0001*(1000/0.0001)**(np.arange(0,71)/70.0)
@@ -38,8 +38,11 @@ class rcslw():
         s.set_Falbdf_co2_co_h2o_at_P()
         s.set_interpolating_functions()
 
-        s.Fmin = 0.0   # s.get_F_albdf(s.Cmin, Tg, Tg, Yco2, Yco, Yh2o)     # todo: check this
-        s.Fmax = 0.999 # s.get_F_albdf(s.Cmax, Tg, Tg, Yco2, Yco, Yh2o)     # todo: check this
+        s.Fmin = 0.41152
+        s.Fmax = 0.997237
+        #s.Fmin = s.get_F_albdf(s.Cmin, Tg, Tg, Yco2, Yco, Yh2o)
+        #s.Fmax = s.get_F_albdf(s.Cmax, Tg, Tg, Yco2, Yco, Yh2o)
+        print(s.Fmin, s.Fmax)
         s.set_Fpts()
 
     #--------------------------------------------------------------------------
@@ -66,9 +69,12 @@ class rcslw():
         for j in range(s.nGGa):
             Ct[j] = s.get_FI_albdf(s.Ft_pts[j], Tg, s.Tref, Yco2, Yco, Yh2o)
 
+        print("C = ", C)
+        print("Ct = ", Ct)
+
         k = np.empty(s.nGGa)
         k[0] = 0.0
-        k[1:] = Nconc * C                     
+        k[1:] = Nconc * C
 
         FCt = np.empty(s.nGGa)
         for j in range(s.nGGa):
@@ -139,10 +145,10 @@ class rcslw():
 
         s = self
 
-        Fmin = s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o)     
-        Fmax = s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o)   
-        if F<Fmin: 
-            return 0.0   
+        Fmin = s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o)
+        Fmax = s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o)
+        if F<Fmin:
+            return 0.0
         if F>Fmax:
             return 1.0
 
@@ -159,24 +165,50 @@ class rcslw():
 
         def Func(C):
 
-            CYco2 = C[0]/Yco2
-            CYco  = C[0]/Yco
-            CYh2o = C[0]/Yh2o
+            if Yco2 < 0.001:
+                F_co2 = 1.0
+            else:
+                CYco2 = C[0]/Yco2
+                if CYco2 < s.C_table[0]  : CYco2 = s.C_table[0]
+                if CYco2 > s.C_table[-1] : CYco2 = s.C_table[-1]
+                F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, CYco2]))[0]
 
-            if CYco2 < s.C_table[0]  : CYco2 = s.C_table[0]
-            if CYco2 > s.C_table[-1] : CYco2 = s.C_table[-1]
-            if CYco  < s.C_table[0]  : CYco  = s.C_table[0]
-            if CYco  > s.C_table[-1] : CYco  = s.C_table[-1]
-            if CYh2o < s.C_table[0]  : CYh2o = s.C_table[0]
-            if CYh2o > s.C_table[-1] : CYh2o = s.C_table[-1]
+            if Yco  < 0.001:
+                F_co  = 1.0
+            else:
+                CYco  = C[0]/Yco
+                if CYco  < s.C_table[0]  : CYco  = s.C_table[0]
+                if CYco  > s.C_table[-1] : CYco  = s.C_table[-1]
+                F_co  = s.interp_F_albdf['co'](np.array([Tg, Tb, CYco]))[0]
 
-            F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, CYco2]))[0]
-            F_co  = s.interp_F_albdf['co']( np.array([Tg, Tb, CYco ]))[0]
-            F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o]))[0]
+            if Yh2o  < 0.001:
+                F_h2o  = 1.0
+            else:
+                CYh2o  = C[0]/Yh2o
+                if CYh2o  < s.C_table[0]  : CYh2o  = s.C_table[0]
+                if CYh2o  > s.C_table[-1] : CYh2o  = s.C_table[-1]
+                F_h2o  = s.interp_F_albdf['h2o'](np.array([Tg, Tb, CYh2o]))[0]
+
+            #CYco2 = C[0]/Yco2
+            #CYco  = C[0]/Yco
+            #CYh2o = C[0]/Yh2o
+
+            #if CYco2 < s.C_table[0]  : CYco2 = s.C_table[0]
+            #if CYco2 > s.C_table[-1] : CYco2 = s.C_table[-1]
+            #if CYco  < s.C_table[0]  : CYco  = s.C_table[0]
+            #if CYco  > s.C_table[-1] : CYco  = s.C_table[-1]
+            #if CYh2o < s.C_table[0]  : CYh2o = s.C_table[0]
+            #if CYh2o > s.C_table[-1] : CYh2o = s.C_table[-1]
+
+            #F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, CYco2]))[0]
+            #F_co  = s.interp_F_albdf['co']( np.array([Tg, Tb, CYco ]))[0]
+            #F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o]))[0]
 
             return (F_co2 * F_co * F_h2o) - F
-        
-        return fsolve(Func, s.C_table[int(s.nC/2)], xtol=1E-3)[0]
+
+        cc = fsolve(Func, s.C_table[int(s.nC/2)], xtol=1E-3)[0]
+        print("Func = ", Func(np.array([cc])))
+        return cc
 
 
     #--------------------------------------------------------------------------
@@ -195,10 +227,10 @@ class rcslw():
 
         s = self
 
-        Fmin = s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o)     
-        Fmax = s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o)    
-        if F<Fmin: 
-            return 0.0   
+        Fmin = s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o)
+        Fmax = s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o)
+        if F<Fmin:
+            return 0.0
         if F>Fmax:
             return 1.0
 
@@ -212,6 +244,16 @@ class rcslw():
         if Tb   > s.Tb_table[-1]  : Tb   = s.Tb_table[-1]
         if Yh2o < s.Yh2o_table[0] : Yh2o = s.Yh2o_table[0]
         if Yh2o > s.Yh2o_table[-1]: Yh2o = s.Yh2o_table[-1]
+
+
+
+
+
+
+
+
+
+
 
         def Func(C):
 
@@ -231,7 +273,7 @@ class rcslw():
             F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o]))[0]
 
             return (F_co2 * F_co * F_h2o) - F
-        
+
         return fsolve(Func, s.C_table[int(s.nC/2)], xtol=1E-3)[0]
 
 
@@ -252,15 +294,16 @@ class rcslw():
         s.Ft_pts[0] = s.Fmin
         s.Ft_pts[1:] = s.Fmin + (s.Fmax-s.Fmin)*np.cumsum(w)
 
+
         s.F_pts = s.Fmin + x*(s.Fmax-s.Fmin)  # F grid (vals bet. \tild{F} pnts
 
     #--------------------------------------------------------------------------
 
     def set_interpolating_functions(self):
-        ''' 
-        The table is read using multi-linear interpolation. 
+        '''
+        The table is read using multi-linear interpolation.
         The scipy RegularGridInterpolator returns a function that is then
-            called with the desired grid point and returns the ALBDF at 
+            called with the desired grid point and returns the ALBDF at
             that point.
         This function just sets those interpolation functions as a dictionary
             over radiating species.
@@ -283,7 +326,7 @@ class rcslw():
     #--------------------------------------------------------------------------
 
     def set_Falbdf_co2_co_h2o_at_P(self):
-        ''' 
+        '''
         Read the albdf table for co2, co, and h2o.
         Separate files are given for various pressures.
         Interpolate the files to the desired pressure: s.P.
@@ -301,7 +344,7 @@ class rcslw():
             P1 = s.P_table[i1]
             P2 = s.P_table[i2]
         elif s.P==s.P_table[-1]:
-            i1 = s.nP-2 
+            i1 = s.nP-2
             i2 = s.nP-1
             P1 = s.P_table[i1]
             P2 = s.P_table[i2]
@@ -326,7 +369,7 @@ class rcslw():
         s.Falbdf['co2'] = F1*(1-f) + F2*(f)
         s.Falbdf['co2'] = np.reshape(s.Falbdf['co2'], (s.nTg, s.nTb, s.nC))
 
-        #------------- CO 
+        #------------- CO
 
         file1 = 'co_p' + str(P1).replace('.', '_') + '.txt'
         file2 = 'co_p' + str(P2).replace('.', '_') + '.txt'
@@ -355,9 +398,9 @@ class rcslw():
 
 P     = 1.0
 Tg    = 1000
-Yco2  = 0.9   
-Yco   = 0.1  
-Yh2o  = 0.00 
+Yco2  = 0.9
+Yco   = 0.1
+Yh2o  = 0.00
 nGG   = 3
 
 Nconc = P*101325/8.31446/Tg
@@ -366,7 +409,7 @@ slw   = rcslw(P, nGG, Tg, Yco2, Yco, Yh2o)
 
 k, a = slw.get_k_a(Tg, Nconc, Yco2, Yco, Yh2o)
 
-print(k)
+print('\n\n',k)
 print(a)
 
 
