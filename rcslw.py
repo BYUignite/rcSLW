@@ -38,11 +38,9 @@ class rcslw():
         s.set_Falbdf_co2_co_h2o_at_P()
         s.set_interpolating_functions()
 
-        s.Fmin = 0.41152
-        s.Fmax = 0.997237
-        #s.Fmin = s.get_F_albdf(s.Cmin, Tg, Tg, Yco2, Yco, Yh2o)
-        #s.Fmax = s.get_F_albdf(s.Cmax, Tg, Tg, Yco2, Yco, Yh2o)
-        print(s.Fmin, s.Fmax)
+        s.Fmin = s.get_F_albdf(s.Cmin, Tg, Tg, Yco2, Yco, Yh2o)
+        s.Fmax = s.get_F_albdf(s.Cmax, Tg, Tg, Yco2, Yco, Yh2o)
+        #print('Fmin, Fmax =', s.Fmin, s.Fmax)
         s.set_Fpts()
 
     #--------------------------------------------------------------------------
@@ -69,8 +67,9 @@ class rcslw():
         for j in range(s.nGGa):
             Ct[j] = s.get_FI_albdf(s.Ft_pts[j], Tg, s.Tref, Yco2, Yco, Yh2o)
 
-        print("C = ", C)
-        print("Ct = ", Ct)
+        print("Ct =    ", Ct)
+        print("C =     ", C)
+        print()
 
         k = np.empty(s.nGGa)
         k[0] = 0.0
@@ -79,6 +78,8 @@ class rcslw():
         FCt = np.empty(s.nGGa)
         for j in range(s.nGGa):
             FCt[j] = s.get_F_albdf(Ct[j], Tg, Tg, Yco2, Yco, Yh2o)
+
+        print("FCt =   ", FCt)  # doldb
 
         a = np.empty(s.nGGa)
         a[0]  = FCt[0]
@@ -145,75 +146,57 @@ class rcslw():
 
         s = self
 
-        Fmin = s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o)
-        Fmax = s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o)
-        if F<Fmin:
-            return 0.0
-        if F>Fmax:
-            return 1.0
+        if F <= s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o):
+            return s.Cmin
+        if F >= s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o):
+            return s.Cmax
 
-        if Yco2 <= 1E-20: Yco2 = 1E-20
-        if Yco  <= 1E-20: Yco  = 1E-20
-        if Yh2o <= 1E-20: Yh2o = 1E-20
+        #----------- find table location
 
-        if Tg   < s.Tg_table[0]   : Tg   = s.Tg_table[0]
-        if Tg   > s.Tg_table[-1]  : Tg   = s.Tg_table[-1]
-        if Tb   < s.Tb_table[0]   : Tb   = s.Tb_table[0]
-        if Tb   > s.Tb_table[-1]  : Tb   = s.Tb_table[-1]
-        if Yh2o < s.Yh2o_table[0] : Yh2o = s.Yh2o_table[0]
-        if Yh2o > s.Yh2o_table[-1]: Yh2o = s.Yh2o_table[-1]
+        iLo = 0
+        iHi = s.nC - 1
 
-        def Func(C):
-
-            if Yco2 < 0.001:
-                F_co2 = 1.0
+        maxit = 100
+        for it in range(maxit):
+            if iHi-iLo == 1:
+                break
+            iMi = int((iLo+iHi)/2)
+            if F > s.get_F_albdf(s.C_table[iMi], Tg, Tb, Yco2, Yco, Yh2o):
+                iLo = iMi
             else:
-                CYco2 = C[0]/Yco2
-                if CYco2 < s.C_table[0]  : CYco2 = s.C_table[0]
-                if CYco2 > s.C_table[-1] : CYco2 = s.C_table[-1]
-                F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, CYco2]))[0]
+                iHi = iMi
+        if(it==maxit):
+            print("WARNING, NO CONVERGENCE IN", maxit, "iterations")
+            return s.C_table[iMi]
+        #print("# iterations", it)
 
-            if Yco  < 0.001:
-                F_co  = 1.0
-            else:
-                CYco  = C[0]/Yco
-                if CYco  < s.C_table[0]  : CYco  = s.C_table[0]
-                if CYco  > s.C_table[-1] : CYco  = s.C_table[-1]
-                F_co  = s.interp_F_albdf['co'](np.array([Tg, Tb, CYco]))[0]
+        #----------- now interpolate to the solution
 
-            if Yh2o  < 0.001:
-                F_h2o  = 1.0
-            else:
-                CYh2o  = C[0]/Yh2o
-                if CYh2o  < s.C_table[0]  : CYh2o  = s.C_table[0]
-                if CYh2o  > s.C_table[-1] : CYh2o  = s.C_table[-1]
-                F_h2o  = s.interp_F_albdf['h2o'](np.array([Tg, Tb, CYh2o]))[0]
+        Flo = s.get_F_albdf(s.C_table[iLo], Tg, Tb, Yco2, Yco, Yh2o)
+        Fhi = s.get_F_albdf(s.C_table[iHi], Tg, Tb, Yco2, Yco, Yh2o)
+        cc = s.C_table[iLo] + (F-Flo)*(s.C_table[iHi]-s.C_table[iLo])/(Fhi-Flo)
 
-            #CYco2 = C[0]/Yco2
-            #CYco  = C[0]/Yco
-            #CYh2o = C[0]/Yh2o
+        #return cc #doldb
 
-            #if CYco2 < s.C_table[0]  : CYco2 = s.C_table[0]
-            #if CYco2 > s.C_table[-1] : CYco2 = s.C_table[-1]
-            #if CYco  < s.C_table[0]  : CYco  = s.C_table[0]
-            #if CYco  > s.C_table[-1] : CYco  = s.C_table[-1]
-            #if CYh2o < s.C_table[0]  : CYh2o = s.C_table[0]
-            #if CYh2o > s.C_table[-1] : CYh2o = s.C_table[-1]
+        #----------- but F(cc) is not equal to F! So give it another interpolation:
+        # rel error ~ 0.1% --> 1E-6
+        
+        FF = s.get_F_albdf(cc, Tg, Tb, Yco2, Yco, Yh2o)
+        ccc = s.C_table[iLo] + (F-Flo)*(cc-s.C_table[iLo])/(FF-Flo)
 
-            #F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, CYco2]))[0]
-            #F_co  = s.interp_F_albdf['co']( np.array([Tg, Tb, CYco ]))[0]
-            #F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o]))[0]
+        #----------- and one more for fun...
+        # rel error ~ 1E-6 --> 1E-10
 
-            return (F_co2 * F_co * F_h2o) - F
+        FFF = s.get_F_albdf(ccc, Tg, Tb, Yco2, Yco, Yh2o)
+        cccc = cc + (F-FF)*(ccc-cc)/(FFF-FF)
 
-        cc = fsolve(Func, s.C_table[int(s.nC/2)], xtol=1E-3)[0]
-        print("Func = ", Func(np.array([cc])))
-        return cc
+        #print("relative error:", (F - s.get_F_albdf(cccc, Tg, Tb, Yco2, Yco, Yh2o))/F)
 
+        return cccc
 
     #--------------------------------------------------------------------------
 
-    def get_FI_albdf_new(self, F, Tg, Tb, Yco2, Yco, Yh2o):
+    def get_FI_albdf_old(self, F, Tg, Tb, Yco2, Yco, Yh2o):
         '''
         Inverse F_albdf: pass in F and get out C.
         C:    input; float; cross section
@@ -227,54 +210,16 @@ class rcslw():
 
         s = self
 
-        Fmin = s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o)
-        Fmax = s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o)
-        if F<Fmin:
-            return 0.0
-        if F>Fmax:
-            return 1.0
-
-        if Yco2 <= 1E-20: Yco2 = 1E-20
-        if Yco  <= 1E-20: Yco  = 1E-20
-        if Yh2o <= 1E-20: Yh2o = 1E-20
-
-        if Tg   < s.Tg_table[0]   : Tg   = s.Tg_table[0]
-        if Tg   > s.Tg_table[-1]  : Tg   = s.Tg_table[-1]
-        if Tb   < s.Tb_table[0]   : Tb   = s.Tb_table[0]
-        if Tb   > s.Tb_table[-1]  : Tb   = s.Tb_table[-1]
-        if Yh2o < s.Yh2o_table[0] : Yh2o = s.Yh2o_table[0]
-        if Yh2o > s.Yh2o_table[-1]: Yh2o = s.Yh2o_table[-1]
-
-
-
-
-
-
-
-
-
-
+        if F < s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o):
+            return s.Cmin
+        if F > s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o):
+            return s.Cmax
 
         def Func(C):
-
-            CYco2 = C[0]/Yco2
-            CYco  = C[0]/Yco
-            CYh2o = C[0]/Yh2o
-
-            if CYco2 < s.C_table[0]  : CYco2 = s.C_table[0]
-            if CYco2 > s.C_table[-1] : CYco2 = s.C_table[-1]
-            if CYco  < s.C_table[0]  : CYco  = s.C_table[0]
-            if CYco  > s.C_table[-1] : CYco  = s.C_table[-1]
-            if CYh2o < s.C_table[0]  : CYh2o = s.C_table[0]
-            if CYh2o > s.C_table[-1] : CYh2o = s.C_table[-1]
-
-            F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, CYco2]))[0]
-            F_co  = s.interp_F_albdf['co']( np.array([Tg, Tb, CYco ]))[0]
-            F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o]))[0]
-
-            return (F_co2 * F_co * F_h2o) - F
-
-        return fsolve(Func, s.C_table[int(s.nC/2)], xtol=1E-3)[0]
+            return s.get_F_albdf(C, Tg, Tb, Yco2, Yco, Yh2o) - F
+        cc = s.bisection(Func,s.Cmin,s.Cmax,1E-8,100)
+        #print("Func = ", Func(np.array([cc])))
+        return cc
 
 
     #--------------------------------------------------------------------------
@@ -296,6 +241,10 @@ class rcslw():
 
 
         s.F_pts = s.Fmin + x*(s.Fmax-s.Fmin)  # F grid (vals bet. \tild{F} pnts
+
+        print("Ft_pts", s.Ft_pts)
+        print("F_pts ", s.F_pts)
+        print()
 
     #--------------------------------------------------------------------------
 
@@ -392,7 +341,30 @@ class rcslw():
         s.Falbdf['h2o'] = np.reshape(s.Falbdf['h2o'],(s.ny_h2o,s.nTg,s.nTb,s.nC))
 
     #--------------------------------------------------------------------------
+    
+    def bisection(self, f,a,b,tol,maxit):
 
+        s = self
+    
+        if f(a)*f(b) > 0 :
+            print("Error: a, b, don't bracket the root")
+            return np.nan,-1
+    
+        for nit in range(1,maxit+1) :
+        
+            c = 0.5*(a+b)
+            if    f(a)*f(c) < 0.0 : 
+                b=c
+            else : 
+                a=c
+        
+            if np.abs((b-a)/(0.5*(b+a))) <= tol : 
+                print('nit=', nit)
+                return 0.5*(a+b)
+            if nit==maxit : 
+                print('nit=', nit)
+                print("No convergence in ", maxit, " iterations")
+                return 0.5*(a+b)
 
 #------------------------------------------------------------------------------
 
@@ -409,9 +381,8 @@ slw   = rcslw(P, nGG, Tg, Yco2, Yco, Yh2o)
 
 k, a = slw.get_k_a(Tg, Nconc, Yco2, Yco, Yh2o)
 
-print('\n\n',k)
-print(a)
-
+print('\n\nk =', k)
+print('a =', a)
 
 
 
