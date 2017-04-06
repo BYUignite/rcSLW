@@ -40,7 +40,7 @@ class rcslw():
 
         s.Fmin = s.get_F_albdf(s.Cmin, Tg, Tg, Yco2, Yco, Yh2o)
         s.Fmax = s.get_F_albdf(s.Cmax, Tg, Tg, Yco2, Yco, Yh2o)
-        #print('Fmin, Fmax =', s.Fmin, s.Fmax)
+        print('Fmin, Fmax =', s.Fmin, s.Fmax)
         s.set_Fpts()
 
     #--------------------------------------------------------------------------
@@ -124,9 +124,9 @@ class rcslw():
         if CYh2o < s.C_table[0]  : CYh2o = s.C_table[0]
         if CYh2o > s.C_table[-1] : CYh2o = s.C_table[-1]
 
-        F_co2 = s.interp_F_albdf['co2'](np.array([Tg, Tb, CYco2]))[0]
-        F_co  = s.interp_F_albdf['co']( np.array([Tg, Tb, CYco ]))[0]
-        F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o]))[0]
+        F_co2 = s.interp_F_albdf['co2'](np.array([      Tg, Tb, CYco2 ]))[0]
+        F_co  = s.interp_F_albdf['co']( np.array([      Tg, Tb, CYco  ]))[0]
+        F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o ]))[0]
 
         return F_co2 * F_co * F_h2o
 
@@ -176,6 +176,7 @@ class rcslw():
         Fhi = s.get_F_albdf(s.C_table[iHi], Tg, Tb, Yco2, Yco, Yh2o)
         cc = s.C_table[iLo] + (F-Flo)*(s.C_table[iHi]-s.C_table[iLo])/(Fhi-Flo)
 
+        #print("relative error:", (F - s.get_F_albdf(cc, Tg, Tb, Yco2, Yco, Yh2o))/F)
         #return cc #doldb
 
         #----------- but F(cc) is not equal to F! So give it another interpolation:
@@ -190,7 +191,7 @@ class rcslw():
         FFF = s.get_F_albdf(ccc, Tg, Tb, Yco2, Yco, Yh2o)
         cccc = cc + (F-FF)*(ccc-cc)/(FFF-FF)
 
-        #print("relative error:", (F - s.get_F_albdf(cccc, Tg, Tb, Yco2, Yco, Yh2o))/F)
+        print("relative error:", (F - s.get_F_albdf(cccc, Tg, Tb, Yco2, Yco, Yh2o))/F)
 
         return cccc
 
