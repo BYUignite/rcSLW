@@ -32,11 +32,11 @@ class rcslw {
 
         int    nGGa = nGG+1;       ///<   number of grey gases including the clear gas
         
-        double P_table[10]    = {0.1, 0.25, 0.5, 1, 2, 4, 8, 15, 30, 50};
-        double C_table
-        double Tg_table
-        double Tb_table
-        double Yh2o_table[9]  = {0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.6, 0.8, 1.0};
+        std::vector<double> P_table;
+        std::vector<double> C_table;
+        std::vector<double> Tg_table;
+        std::vector<double> Tb_table;
+        std::vector<double> Yh2o_table;
 
          
         double Tg; 
@@ -85,7 +85,8 @@ class rcslw {
     
     public: 
     
-        rcslw(const double p_Tg, 
+        rcslw(const int    p_nGG,
+              const double p_Tg, 
               const double p_Nconc, 
               const double p_Yco2, 
               const double p_Yco, 
