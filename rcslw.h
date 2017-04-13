@@ -24,8 +24,21 @@ class rcslw {
 
     private:
 
-        int    nGG;      ///<   number of gray gases, not including the clear gas
+        int    nGG;               ///<   number of gray gases, not including the clear gas
+        double P;                 ///<   pressure (atm)
+        double Tref = 1000.0;     ///<   reference temperature (Tb in Falbdf) (K)
+        double Cmin = 0.0001;
+        double Cmax - 100.0;
 
+        int    nGGa = nGG+1;       ///<   number of grey gases including the clear gas
+        
+        double P_table[10]    = {0.1, 0.25, 0.5, 1, 2, 4, 8, 15, 30, 50};
+        double C_table
+        double Tg_table
+        double Tb_table
+        double Yh2o_table[9]  = {0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.6, 0.8, 1.0};
+
+         
         double Tg; 
         double Nconc;
         double Yco2; 
@@ -42,6 +55,24 @@ class rcslw {
     public:
 
         void set_k_a();
+        /**
+         * THIS IS THE CLASS INTERFACE FUNCTION
+         * return the local gray gas coefficients (k) and the local weights (a).
+         * Tg:    input; float; gas temperature
+         * Nconc: input; float; molar concentration: mol/m3
+         * Yco2:  input; float; mole fraction co2
+         * Yco:   input; float; mole fraction co
+         * Yh2o:  input; float; mole fraction h2o
+         */
+
+        std::vector<int> C;
+        std::vector<int> Ct;
+
+        
+
+        for()
+
+
 
     private:
 
