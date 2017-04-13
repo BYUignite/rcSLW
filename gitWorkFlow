@@ -1,0 +1,81 @@
+dol4@dolmac ~/rad
+$ ls
+
+
+dol4@dolmac ~/rad
+$ git clone https://github.com/BYUignite/rcSLW.git
+Cloning into 'rcSLW'...
+remote: Counting objects: 76, done.
+remote: Total 76 (delta 0), reused 0 (delta 0), pack-reused 76
+Unpacking objects: 100% (76/76), done.
+
+dol4@dolmac ~/rad
+$ ls
+rcSLW/
+
+dol4@dolmac ~/rad
+$ cd rcSLW
+
+dol4@dolmac ~/rad/rcSLW
+$ ls
+ALBDF_Tables/ README.md     comparison    rcslw.cc      rcslw.h       rcslw.py
+
+dol4@dolmac ~/rad/rcSLW
+$ git status
+On branch master
+Your branch is up-to-date with 'origin/master'.
+nothing to commit, working tree clean
+
+dol4@dolmac ~/rad/rcSLW
+$ vim rcslw.cc
+
+dol4@dolmac ~/rad/rcSLW
+$ git status
+On branch master
+Your branch is up-to-date with 'origin/master'.
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+	modified:   rcslw.cc
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+dol4@dolmac ~/rad/rcSLW
+$ git add rcslw.cc
+
+dol4@dolmac ~/rad/rcSLW
+$ git commit
+[master d4fee29] Just demonstrating git flow.
+ Committer: david lignell <dol4@dolmac.et.byu.edu>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 1 file changed, 1 insertion(+)
+
+dol4@dolmac ~/rad/rcSLW
+$ git status
+On branch master
+Your branch is ahead of 'origin/master' by 1 commit.
+  (use "git push" to publish your local commits)
+nothing to commit, working tree clean
+
+dol4@dolmac ~/rad/rcSLW
+$ git push
+Counting objects: 3, done.
+Delta compression using up to 8 threads.
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (3/3), 307 bytes | 0 bytes/s, done.
+Total 3 (delta 2), reused 0 (delta 0)
+remote: Resolving deltas: 100% (2/2), completed with 2 local objects.
+To https://github.com/BYUignite/rcSLW.git
+   76daf72..d4fee29  master -> master
+
