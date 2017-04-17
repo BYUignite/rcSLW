@@ -8,10 +8,19 @@ from   numpy.polynomial.legendre import leggauss
 #------------------------------------------------------------------------------
 
 class rcslw():
+    '''
+    The Rank Correlated SLW model.
+    V.P. Solovjov, F. Andre, D. Lemonnier, B.W. Webb
+    http://www.sciencedirect.com/science/article/pii/S0022407316306434
+    @author David O. Lignell
+    Note: This was verified by comparing to Solovjov's code. 
+        The code here is independent of his code, except the inversion function 
+        follows the same approach.
+    '''
 
     #--------------------------------------------------------------------------
 
-    def __init__(self, P, nGG, Tg, Yco2, Yco, Yh2o):
+    def __init__(self, P, nGG, Tg, Yco2, Yco, Yh2o, fvsoot):
 
         s = self
 
@@ -38,22 +47,23 @@ class rcslw():
         s.set_Falbdf_co2_co_h2o_at_P()
         s.set_interpolating_functions()
 
-        s.Fmin = s.get_F_albdf(s.Cmin, Tg, Tg, Yco2, Yco, Yh2o)
-        s.Fmax = s.get_F_albdf(s.Cmax, Tg, Tg, Yco2, Yco, Yh2o)
+        s.Fmin = s.get_F_albdf(s.Cmin, Tg, Tg, Yco2, Yco, Yh2o, fvsoot)
+        s.Fmax = s.get_F_albdf(s.Cmax, Tg, Tg, Yco2, Yco, Yh2o, fvsoot)
         print('Fmin, Fmax =', s.Fmin, s.Fmax)
         s.set_Fpts()
 
     #--------------------------------------------------------------------------
 
-    def get_k_a(self, Tg, Nconc, Yco2, Yco, Yh2o):
+    def get_k_a(self, Tg, Yco2, Yco, Yh2o, fvsoot):
         '''
         THIS IS THE CLASS INTERFACE FUNCTION
         return the local gray gas coefficients (k) and the local weights (a).
-        Tg:    input; float; gas temperature
-        Nconc: input; float; molar concentration: mol/m3
-        Yco2:  input; float; mole fraction co2
-        Yco:   input; float; mole fraction co
-        Yh2o:  input; float; mole fraction h2o
+        Tg:     input; float; gas temperature
+        Yco2:   input; float; mole fraction co2
+        Yco:    input; float; mole fraction co
+        Yh2o:   input; float; mole fraction h2o
+        fvsoot: input; float; soot volume fraction = rho*Ysoot/rhoSoot
+        returns k, a arrays
         '''
 
         s = self
@@ -62,14 +72,16 @@ class rcslw():
         Ct = np.empty(s.nGGa)     # \tilde{C} = C(\tilde{F}, \phi_{loc}, Tref)
 
         for j in range(s.nGG):
-            C[j] =  s.get_FI_albdf(s.F_pts[j],  Tg, s.Tref, Yco2, Yco, Yh2o)
+            C[j] =  s.get_FI_albdf(s.F_pts[j],  Tg, s.Tref, Yco2, Yco, Yh2o, fvsoot)
 
         for j in range(s.nGGa):
-            Ct[j] = s.get_FI_albdf(s.Ft_pts[j], Tg, s.Tref, Yco2, Yco, Yh2o)
+            Ct[j] = s.get_FI_albdf(s.Ft_pts[j], Tg, s.Tref, Yco2, Yco, Yh2o, fvsoot)
 
         print("Ct =    ", Ct)
         print("C =     ", C)
         print()
+
+        Nconc = s.P*101325/8.31446/Tg    # mol/m3
 
         k = np.empty(s.nGGa)
         k[0] = 0.0
@@ -77,7 +89,7 @@ class rcslw():
 
         FCt = np.empty(s.nGGa)
         for j in range(s.nGGa):
-            FCt[j] = s.get_F_albdf(Ct[j], Tg, Tg, Yco2, Yco, Yh2o)
+            FCt[j] = s.get_F_albdf(Ct[j], Tg, Tg, Yco2, Yco, Yh2o, fvsoot)
 
         print("FCt =   ", FCt)  # doldb
 
@@ -89,7 +101,7 @@ class rcslw():
 
     #--------------------------------------------------------------------------
 
-    def get_F_albdf(self, C, Tg, Tb, Yco2, Yco, Yh2o):
+    def get_F_albdf(self, C, Tg, Tb, Yco2, Yco, Yh2o, fvsoot):
         '''
         C:    input; float; cross section
         Tg:   input; float; gas temperature
@@ -124,31 +136,32 @@ class rcslw():
         if CYh2o < s.C_table[0]  : CYh2o = s.C_table[0]
         if CYh2o > s.C_table[-1] : CYh2o = s.C_table[-1]
 
-        F_co2 = s.interp_F_albdf['co2'](np.array([      Tg, Tb, CYco2 ]))[0]
-        F_co  = s.interp_F_albdf['co']( np.array([      Tg, Tb, CYco  ]))[0]
-        F_h2o = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o ]))[0]
+        F_co2  = s.interp_F_albdf['co2'](np.array([      Tg, Tb, CYco2 ]))[0]
+        F_co   = s.interp_F_albdf['co']( np.array([      Tg, Tb, CYco  ]))[0]
+        F_h2o  = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o ]))[0]
 
-        return F_co2 * F_co * F_h2o
+        return F_co2 * F_co * F_h2o * s.F_albdf_soot(C, Tg, Tb, fvsoot)
 
     #--------------------------------------------------------------------------
 
-    def get_FI_albdf(self, F, Tg, Tb, Yco2, Yco, Yh2o):
+    def get_FI_albdf(self, F, Tg, Tb, Yco2, Yco, Yh2o, fvsoot):
         '''
         Inverse F_albdf: pass in F and get out C.
-        C:    input; float; cross section
-        Tg:   input; float; gas temperature
-        Tb:   input; float; black temperature
-        Yco2: input; float; mole fraction co2
-        Yco:  input; float; mole fraction co
-        Yh2o: input; float; mole fraction h2o
+        C:      input; float; cross section
+        Tg:     input; float; gas temperature
+        Tb:     input; float; black temperature
+        Yco2:   input; float; mole fraction co2
+        Yco:    input; float; mole fraction co
+        Yh2o:   input; float; mole fraction h2o
+        fvsoot: input; float; soot volume fraction = rho*Ysoot/rhoSoot
         returns C.
         '''
 
         s = self
 
-        if F <= s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o):
+        if F <= s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o, fvsoot):
             return s.Cmin
-        if F >= s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o):
+        if F >= s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o, fvsoot):
             return s.Cmax
 
         #----------- find table location
@@ -161,7 +174,7 @@ class rcslw():
             if iHi-iLo == 1:
                 break
             iMi = int((iLo+iHi)/2)
-            if F > s.get_F_albdf(s.C_table[iMi], Tg, Tb, Yco2, Yco, Yh2o):
+            if F > s.get_F_albdf(s.C_table[iMi], Tg, Tb, Yco2, Yco, Yh2o, fvsoot):
                 iLo = iMi
             else:
                 iHi = iMi
@@ -172,32 +185,32 @@ class rcslw():
 
         #----------- now interpolate to the solution
 
-        Flo = s.get_F_albdf(s.C_table[iLo], Tg, Tb, Yco2, Yco, Yh2o)
-        Fhi = s.get_F_albdf(s.C_table[iHi], Tg, Tb, Yco2, Yco, Yh2o)
+        Flo = s.get_F_albdf(s.C_table[iLo], Tg, Tb, Yco2, Yco, Yh2o, fvsoot)
+        Fhi = s.get_F_albdf(s.C_table[iHi], Tg, Tb, Yco2, Yco, Yh2o, fvsoot)
         cc = s.C_table[iLo] + (F-Flo)*(s.C_table[iHi]-s.C_table[iLo])/(Fhi-Flo)
 
-        #print("relative error:", (F - s.get_F_albdf(cc, Tg, Tb, Yco2, Yco, Yh2o))/F)
+        #print("relative error:", (F - s.get_F_albdf(cc, Tg, Tb, Yco2, Yco, Yh2o, fvsoot))/F)
         #return cc #doldb
 
         #----------- but F(cc) is not equal to F! So give it another interpolation:
         # rel error ~ 0.1% --> 1E-6
         
-        FF = s.get_F_albdf(cc, Tg, Tb, Yco2, Yco, Yh2o)
+        FF = s.get_F_albdf(cc, Tg, Tb, Yco2, Yco, Yh2o, fvsoot)
         ccc = s.C_table[iLo] + (F-Flo)*(cc-s.C_table[iLo])/(FF-Flo)
 
         #----------- and one more for fun...
         # rel error ~ 1E-6 --> 1E-10
 
-        FFF = s.get_F_albdf(ccc, Tg, Tb, Yco2, Yco, Yh2o)
+        FFF = s.get_F_albdf(ccc, Tg, Tb, Yco2, Yco, Yh2o, fvsoot)
         cccc = cc + (F-FF)*(ccc-cc)/(FFF-FF)
 
-        print("relative error:", (F - s.get_F_albdf(cccc, Tg, Tb, Yco2, Yco, Yh2o))/F)
+        print("relative error:", (F - s.get_F_albdf(cccc, Tg, Tb, Yco2, Yco, Yh2o, fvsoot))/F)
 
         return cccc
 
     #--------------------------------------------------------------------------
 
-    def get_FI_albdf_old(self, F, Tg, Tb, Yco2, Yco, Yh2o):
+    def get_FI_albdf_old(self, F, Tg, Tb, Yco2, Yco, Yh2o, fvsoot):
         '''
         Inverse F_albdf: pass in F and get out C.
         C:    input; float; cross section
@@ -206,18 +219,19 @@ class rcslw():
         Yco2: input; float; mole fraction co2
         Yco:  input; float; mole fraction co
         Yh2o: input; float; mole fraction h2o
+        fvsoot: input; float; soot volume fraction = rho*Ysoot/rhoSoot
         returns C.
         '''
 
         s = self
 
-        if F < s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o):
+        if F < s.get_F_albdf(s.Cmin, Tg, Tb, Yco2, Yco, Yh2o, fvsoot):
             return s.Cmin
-        if F > s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o):
+        if F > s.get_F_albdf(s.Cmax, Tg, Tb, Yco2, Yco, Yh2o, fvsoot):
             return s.Cmax
 
         def Func(C):
-            return s.get_F_albdf(C, Tg, Tb, Yco2, Yco, Yh2o) - F
+            return s.get_F_albdf(C, Tg, Tb, Yco2, Yco, Yh2o, fvsoot) - F
         cc = s.bisection(Func,s.Cmin,s.Cmax,1E-8,100)
         #print("Func = ", Func(np.array([cc])))
         return cc
@@ -342,6 +356,34 @@ class rcslw():
         s.Falbdf['h2o'] = np.reshape(s.Falbdf['h2o'],(s.ny_h2o,s.nTg,s.nTb,s.nC))
 
     #--------------------------------------------------------------------------
+
+    def F_albdf_soot(self, c, Tg, Tb, fvsoot):
+        '''
+        C:    input; float; cross section
+        Tg:   input; float; gas temperature
+        Tb:   input; float; black temperature
+        returns the albdf function F for soot
+        Note: This comes from Solovjov 2001 and Chang 1984
+        http://heattransfer.asmedigitalcollection.asme.org/article.aspx?articleid=1444909
+        http://www.sciencedirect.com/science/article/pii/0735193384900514
+        '''
+
+        if fvsoot < 1E-12:
+            return 1.0
+
+        s = self
+
+        csoot = 7.0                 # general soot parameter
+        hCokb = 0.01438777354       # m*K = h*Co/kb = Planck*lightSpeed/Boltzmann (for soot)
+
+        Nconc = s.P*101325/8.31446/Tg # mol/m3
+
+        x = hCokb*c*Nconc / (csoot*fvsoot*Tb)
+
+        n = np.array([1,2,3])       # sum from n=1 to oo, but n=1 to 3 is enough.
+        return 1.0 - 15.0/np.pi**4*np.sum(np.exp(-n*x)/n**4*(n*x*(n*x*(n*x+3)+6)+6))
+
+    #--------------------------------------------------------------------------
     
     def bisection(self, f,a,b,tol,maxit):
 
@@ -369,34 +411,20 @@ class rcslw():
 
 #------------------------------------------------------------------------------
 
-P     = 1.0
-Tg    = 1000
-Yco2  = 0.9
-Yco   = 0.1
-Yh2o  = 0.00
-nGG   = 3
+P      = 1.0       # atm
+Tg     = 1000      # gas temperature
+Yco2   = 0.9       # mole fraction co2
+Yco    = 0.1       # mole fraction co
+Yh2o   = 0.00      # mole fraction h2o
+nGG    = 3         # number of gray gases (not including the clear gas)
+fvsoot = 0.0      # soot volume fraction (=rho*Ysoot/rhoSoot, where Ysoot = mass frac)
 
-Nconc = P*101325/8.31446/Tg
+slw   = rcslw(P, nGG, Tg, Yco2, Yco, Yh2o, fvsoot)
 
-slw   = rcslw(P, nGG, Tg, Yco2, Yco, Yh2o)
-
-k, a = slw.get_k_a(Tg, Nconc, Yco2, Yco, Yh2o)
+k, a = slw.get_k_a(Tg, Yco2, Yco, Yh2o, fvsoot)
 
 print('\n\nk =', k)
 print('a =', a)
-
-
-
-
-#Tb = 1500
-#C = 0.5*Yco2
-#F = slw.get_F_albdf(C, Tg, Tb, Yco2, Yco, Yh2o)
-#C = slw.get_FI_albdf(F, Tg, Tb, Yco2, Yco, Yh2o)
-#print(F, C)
-
-#for i in range(slw.nC):
-#    print(slw.C_table[i], slw.Falbdf['co2'][12,7,i])
-#exit()
 
 
 
