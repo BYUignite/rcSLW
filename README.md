@@ -1,5 +1,7 @@
 # Rank Correlated SLW model
 
+This work was supported by the National Science Foundation under grant number CBET-1403403.
+
 This code sets up a class for getting local gray gas coefficients κ's, and weights a's for the Rank Correlated SLW model.
 * See the paper by [Solovjov et al., J. Quantitative Spectroscopy and Radiative Transfer 197:26-44(2017)](https://www.sciencedirect.com/science/article/pii/S0022407316306434?via%3Dihub).
 * The following initializes the code:
