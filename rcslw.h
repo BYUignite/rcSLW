@@ -1,57 +1,102 @@
+/**
+ * @file rcslw.h
+ * Header file for class rcslw
+ */
+
 #ifndef RCSLW_H
 #define RCSLW_H
+
 #include <vector>
 
 
-class rcslw {
-	/*
-	The Rank Correlated SLW model.
-	V.P.Solovjov, F.Andre, D.Lemonnier, B.W.Webb
-	http ://www.sciencedirect.com/science/article/pii/S0022407316306434
-	@author David O.Lignell
-	Note : This was verified by comparing to Solovjov's code.
-	The code here is the C++ modified code of David O. Lignell's python code.
-	follows the same approach.
-	*/
-public:
-	void setData(double Pressure = 0, int nGG = 0, double Tg = 0, double Yco2 = 0, double Yco = 0, double Yh2o = 0, double fvsoot = 0);
-	void set_Falbdf_co2_co_h2o_at_P();
-	void set_interpolating_functions();
-	void get_k_a(double Tg, double Yco2, double Yco, double Yh2o, double fvsoot, vector<double>& k, vector<double>& a);
-	double get_F_albdf(double C, double Tg, double Tb, double Yco2, double Yco, double Yh2o, double fvsoot);
-	void get_FI_albdf();
-	void get_FI_albdf_old();
-	void set_Fpts();
-	double F_albdf_soot(double c, double Tg, double Tb, double fvsoot);
-	void bisection();
+////////////////////////////////////////////////////////////////////////////////
 
-private:
-	double P;
-	int nGG;
-	double Tg;
-	double Yco2;
-	double Yco;
-	double Yh2o;
-	double fvsoot;
-	int nGGa;
-	double Cmin;
-	double Cmax;
-	double Tref;
-	vector<double> Tg_table;
-	vector<double> Tb_table;
-	vector<double> C_table;		// Table of C values
-	vector<double> Yh2o_table;
-	vector<double> P_table;		// atm
-	vector<string> Pstr;
-	int numYh2o;
-	double numTg;
-	double numTb;
-	int numC;
-	int numP;
-	double Fmin;
-	double Fmax;
-	vector<double> Ft_pts;
-	vector<double> F_pts;
+/** Class implementing rcslw object
+ *
+ *  @author ignite.byu.edu
+ *  todo: add some description and references, etc.
+ */
+
+class rcslw {
+
+
+    //////////////////// DATA MEMBERS //////////////////////
+
+    private:
+
+        int    nGG;               ///<   number of gray gases, not including the clear gas
+        double P;                 ///<   pressure (atm)
+        double Tref = 1000.0;     ///<   reference temperature (Tb in Falbdf) (K)
+        double Cmin = 0.0001;
+        double Cmax = 100.0;
+        
+        
+        
+
+        int    nGGa = nGG+1;       ///<   number of grey gases including the clear gas
+        
+        std::vector<double> P_table;
+        std::vector<double> C_table;
+        std::vector<double> Tg_table;
+        std::vector<double> Tb_table;
+        std::vector<double> Yh2o_table;
+
+         
+        double Tg; 
+        double Nconc;
+        double Yco2; 
+        double Yco; 
+        double Yh2o;
+
+   public:
+
+        std::vector<double> k; 
+        std::vector<double> a; 
+
+    //////////////////// MEMBER FUNCTIONS /////////////////
+
+    public:
+
+        void set_k_a();
+        /**
+         * THIS IS THE CLASS INTERFACE FUNCTION
+         * return the local gray gas coefficients (k) and the local weights (a).
+         * Tg:    input; float; gas temperature
+         * Nconc: input; float; molar concentration: mol/m3
+         * Yco2:  input; float; mole fraction co2
+         * Yco:   input; float; mole fraction co
+         * Yh2o:  input; float; mole fraction h2o
+         */
+
+        std::vector<int> C;
+        std::vector<int> Ct;
+
+        
+
+        for()
+
+
+
+    private:
+
+                     
+                     
+                     
+
+
+    //////////////////// CONSTRUCTOR FUNCTIONS /////////////////
+    
+    public: 
+    
+        rcslw(const int    p_nGG,
+              const double p_Tg, 
+              const double p_Nconc, 
+              const double p_Yco2, 
+              const double p_Yco, 
+              const double p_Yh2o);
+        rcslw(){}
+        ~rcslw(){}
+
+
 };
 
-#endif
