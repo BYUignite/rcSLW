@@ -38,17 +38,6 @@ class rcslw {
         double Cmax;
         int    nGGa;      ///<   number of grey gases including the clear gas
 
-<<<<<<< HEAD
-=======
-        int    nGG;               ///<   number of gray gases, not including the clear gas
-        double P;                 ///<   pressure (atm)
-        double Tref = 1000.0;     ///<   reference temperature (Tb in Falbdf) (K)
-        double Cmin = 0.0001;
-        double Cmax = 100.0;
-        
-        
-        
->>>>>>> 205e9b0a291b513cf556d6f50e8f91a0a5ece515
 
         std::vector<double> P_table;
         std::vector<double> C_table;
