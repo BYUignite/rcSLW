@@ -20,7 +20,7 @@ class rcslw():
 
     #--------------------------------------------------------------------------
 
-    def __init__(self, P, nGG, Tg, Yco2, Yco, Yh2o, fvsoot):
+    def __init__(self, nGG, P, Tg, Yco2, Yco, Yh2o, fvsoot):
 
         s = self
 
@@ -37,6 +37,10 @@ class rcslw():
         s.Tg_table   = np.linspace(300.0, 3000.0, 28)
         s.Tb_table   = np.linspace(300.0, 3000.0, 28)
         s.Yh2o_table = np.array([0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.6, 0.8, 1.0])
+        print(s.Tg_table)
+        print(s.Tb_table)
+        print(s.C_table)
+        print(s.Yh2o_table)
 
         s.nP     = len(s.P_table)     #10
         s.nC     = len(s.C_table)     #71
@@ -419,7 +423,7 @@ Yh2o   = 0.00      # mole fraction h2o
 nGG    = 3         # number of gray gases (not including the clear gas)
 fvsoot = 0.0      # soot volume fraction (=rho*Ysoot/rhoSoot, where Ysoot = mass frac)
 
-slw   = rcslw(P, nGG, Tg, Yco2, Yco, Yh2o, fvsoot)
+slw   = rcslw(nGG, P, Tg, Yco2, Yco, Yh2o, fvsoot)
 
 k, a = slw.get_k_a(Tg, Yco2, Yco, Yh2o, fvsoot)
 
