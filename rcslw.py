@@ -4,6 +4,7 @@ import numpy as np
 from   scipy.interpolate         import RegularGridInterpolator
 from   scipy.optimize            import fsolve
 from   numpy.polynomial.legendre import leggauss
+import sys
 
 #------------------------------------------------------------------------------
 
@@ -52,6 +53,8 @@ class rcslw():
         s.set_interpolating_functions()
 
         s.Fmin = s.get_F_albdf(s.Cmin, Tg, Tg, Yco2, Yco, Yh2o, fvsoot)
+        print('Fmin', s.Fmin)
+        sys.exit() # doldb
         s.Fmax = s.get_F_albdf(s.Cmax, Tg, Tg, Yco2, Yco, Yh2o, fvsoot)
         print('Fmin, Fmax =', s.Fmin, s.Fmax)
         s.set_Fpts()
@@ -143,6 +146,7 @@ class rcslw():
         F_co2  = s.interp_F_albdf['co2'](np.array([      Tg, Tb, CYco2 ]))[0]
         F_co   = s.interp_F_albdf['co']( np.array([      Tg, Tb, CYco  ]))[0]
         F_h2o  = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o ]))[0]
+        print("Fs: ", F_co2, F_co, F_h2o)
 
         return F_co2 * F_co * F_h2o * s.F_albdf_soot(C, Tg, Tb, fvsoot)
 
@@ -336,6 +340,7 @@ class rcslw():
 
         s.Falbdf['co2'] = F1*(1-f) + F2*(f)
         s.Falbdf['co2'] = np.reshape(s.Falbdf['co2'], (s.nTg, s.nTb, s.nC))
+
 
         #------------- CO
 

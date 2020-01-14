@@ -3,6 +3,7 @@
  * Source file for class rcslw
  */
 
+#include "multi-D.h"
 #include "rcslw.h"
 #include <algorithm>
 #include <cmath>
@@ -25,9 +26,9 @@ rcslw::rcslw(const int    p_nGG,
     P     = p_P;
     nGG   = p_nGG;
     nGGa  = nGG + 1;
-    Tref  = 1000; 
+    Tref  = 1000.0; 
     Cmin  = 0.0001;
-    Cmax  = 100;
+    Cmax  = 100.0;
 
     P_table  = vector<double>{0.1, 0.25, 0.5, 1,2,4,8,15,30,50};
     C_table  = vector<double>(71);
@@ -53,7 +54,10 @@ rcslw::rcslw(const int    p_nGG,
     set_Falbdf_co2_co_h2o_at_P();
 
     Fmin = get_F_albdf(Cmin, Tg, Tg, Yco2, Yco, Yh2o, fvsoot);
+    cout << endl << "Fmin: " << Fmin << endl;//doldb
+    exit(0);
     Fmax = get_F_albdf(Cmax, Tg, Tg, Yco2, Yco, Yh2o, fvsoot);
+    cout << endl << "Fmax: " << Fmax << endl;
 
     set_Fpts();
 
@@ -164,6 +168,7 @@ double rcslw::get_F_albdf(double C, double Tg, double Tb, double Yco2, double Yc
     F_co  = LI_3D(            Tg_table, Tb_table, C_table, Falbdf_co,         Tg, Tb, CYco);
     F_h2o = LI_4D(Yh2o_table, Tg_table, Tb_table, C_table, Falbdf_h2o,  Yh2o, Tg, Tb, CYh2o);
 
+    cout << endl << "Fs: " << F_co2 << " " << F_co << " " << " " << F_h2o << endl;//doldb
     return F_co2 * F_co * F_h2o * F_albdf_soot(C, Tg, Tb, fvsoot);
 }
 
@@ -298,8 +303,8 @@ void rcslw::set_Fpts(){
     Ft_pts.resize(nGGa);                            // \tilde{F} grid
 
     vector<double> cumsum_w(nGG, W[nGG][nGG]);
-    for(int i=nGG+1; i<W[nGG].size(); i++)
-        cumsum_w[i] = cumsum_w[i-1] + W[nGG][i];
+    for(int i=1; i<nGG; i++)
+        cumsum_w[i] = cumsum_w[i-1] + W[nGG][i+nGG];
 
     Ft_pts[0] = Fmin;
     for(int i=1; i<nGGa; i++)
