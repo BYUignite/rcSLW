@@ -38,10 +38,6 @@ class rcslw():
         s.Tg_table   = np.linspace(300.0, 3000.0, 28)
         s.Tb_table   = np.linspace(300.0, 3000.0, 28)
         s.Yh2o_table = np.array([0, 0.05, 0.1, 0.2, 0.3, 0.4, 0.6, 0.8, 1.0])
-        print(s.Tg_table)
-        print(s.Tb_table)
-        print(s.C_table)
-        print(s.Yh2o_table)
 
         s.nP     = len(s.P_table)     #10
         s.nC     = len(s.C_table)     #71
@@ -53,11 +49,10 @@ class rcslw():
         s.set_interpolating_functions()
 
         s.Fmin = s.get_F_albdf(s.Cmin, Tg, Tg, Yco2, Yco, Yh2o, fvsoot)
-        print('Fmin', s.Fmin)
-        sys.exit() # doldb
         s.Fmax = s.get_F_albdf(s.Cmax, Tg, Tg, Yco2, Yco, Yh2o, fvsoot)
-        print('Fmin, Fmax =', s.Fmin, s.Fmax)
+
         s.set_Fpts()
+        #sys.exit() # doldb
 
     #--------------------------------------------------------------------------
 
@@ -84,10 +79,6 @@ class rcslw():
         for j in range(s.nGGa):
             Ct[j] = s.get_FI_albdf(s.Ft_pts[j], Tg, s.Tref, Yco2, Yco, Yh2o, fvsoot)
 
-        print("Ct =    ", Ct)
-        print("C =     ", C)
-        print()
-
         Nconc = s.P*101325/8.31446/Tg    # mol/m3
 
         k = np.empty(s.nGGa)
@@ -97,8 +88,6 @@ class rcslw():
         FCt = np.empty(s.nGGa)
         for j in range(s.nGGa):
             FCt[j] = s.get_F_albdf(Ct[j], Tg, Tg, Yco2, Yco, Yh2o, fvsoot)
-
-        print("FCt =   ", FCt)  # doldb
 
         a = np.empty(s.nGGa)
         a[0]  = FCt[0]
@@ -146,7 +135,6 @@ class rcslw():
         F_co2  = s.interp_F_albdf['co2'](np.array([      Tg, Tb, CYco2 ]))[0]
         F_co   = s.interp_F_albdf['co']( np.array([      Tg, Tb, CYco  ]))[0]
         F_h2o  = s.interp_F_albdf['h2o'](np.array([Yh2o, Tg, Tb, CYh2o ]))[0]
-        print("Fs: ", F_co2, F_co, F_h2o)
 
         return F_co2 * F_co * F_h2o * s.F_albdf_soot(C, Tg, Tb, fvsoot)
 
@@ -212,7 +200,7 @@ class rcslw():
         FFF = s.get_F_albdf(ccc, Tg, Tb, Yco2, Yco, Yh2o, fvsoot)
         cccc = cc + (F-FF)*(ccc-cc)/(FFF-FF)
 
-        print("relative error:", (F - s.get_F_albdf(cccc, Tg, Tb, Yco2, Yco, Yh2o, fvsoot))/F)
+        #print("relative error:", (F - s.get_F_albdf(cccc, Tg, Tb, Yco2, Yco, Yh2o, fvsoot))/F)
 
         return cccc
 
@@ -241,7 +229,6 @@ class rcslw():
         def Func(C):
             return s.get_F_albdf(C, Tg, Tb, Yco2, Yco, Yh2o, fvsoot) - F
         cc = s.bisection(Func,s.Cmin,s.Cmax,1E-8,100)
-        #print("Func = ", Func(np.array([cc])))
         return cc
 
 
@@ -264,10 +251,6 @@ class rcslw():
 
 
         s.F_pts = s.Fmin + x*(s.Fmax-s.Fmin)  # F grid (vals bet. \tild{F} pnts
-
-        print("Ft_pts", s.Ft_pts)
-        print("F_pts ", s.F_pts)
-        print()
 
     #--------------------------------------------------------------------------
 

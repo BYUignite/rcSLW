@@ -1,45 +1,65 @@
 // COMPILE AS g++ -std=c++11 multi-D-interpolation.cc
+
 /**
  * A multi-dimensional interpolator
  * Interpolates up to 5-D
  */ 
 
-#include <iostream>
-#include <cmath>
 #include <vector>
-#include <iomanip>
+#include <tuple>
 
 using namespace std;
 
-double LI_1D(vector<double> x, vector<double> f, double xi){
-    double dx = x[1] - x[0];
-    int ilo = int(xi/dx);
-    if (ilo < 0){
-        ilo = 0;
-    }
-    else if (ilo >= x.size() - 1){
-        ilo = x.size() - 2;
-    }
-    int ihi = ilo + 1;
+////////////////////////////////////////////////////////////////////////////////
 
-    return (f[ilo] + (xi - x[ilo]) * (f[ihi]-f[ilo])/(x[ihi]-x[ilo]));
+tuple<int, int> get_bounding_points_uniform(const vector<double> &x, const double xP){
+    double dx = x[1] - x[0];
+    int ilo = int((xP-x[0])/dx);
+    if (ilo < 0)
+        ilo = 0;
+    else if (ilo >= x.size() - 1)
+        ilo = x.size() - 2;
+    int ihi = ilo + 1;
+    return make_tuple(ilo, ihi);
+}
+//-------------------------------------------------------------------------------
+
+tuple<int, int> get_bounding_points(const vector<double> &x, const double xP){
+    int ilo, ihi;
+    if(xP <= x[0])
+        ihi = 1;
+    else if(xP >= x.back())
+        ihi = x.size()-1;
+    else {
+        vector<const double>::iterator itHi = lower_bound(x.begin(), x.end(), xP); // lower_bound gives values >= xP
+        ihi = itHi - x.begin();
+    }
+    ilo = ihi-1;
+    return make_tuple(ilo, ihi);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+double LI_1D(const vector<double> &x, 
+             const vector<double> &f, 
+             const double xP){
+
+    int ilo, ihi;
+    tie(ilo, ihi) = get_bounding_points(x, xP);
+
+    return f[ilo] + (xP - x[ilo]) * (f[ihi]-f[ilo])/(x[ihi]-x[ilo]);
 
 }
 
+////////////////////////////////////////////////////////////////////////////////
 
-double LI_2D(vector<double> x, vector<double> y, vector<vector<double> > f, double xP, double yP){
-    double dx = x[1] - x[0];
+double LI_2D(const vector<double> &x, 
+             const vector<double> &y, 
+             const vector<vector<double> > &f, 
+             const double xP, const double yP){
 
-    int ilo = int(xP/dx);
-    if (ilo < 0){
-        ilo = 0;
-    }
-
-    else if (ilo >= x.size() - 1){
-        ilo = x.size() - 2;
-    }
-
-    int ihi = ilo + 1;
+    int ilo, ihi;
+    tie(ilo, ihi) = get_bounding_points(x, xP);
 
     ////////////// interpolate grid to yP ////////////////////////
 
@@ -51,20 +71,16 @@ double LI_2D(vector<double> x, vector<double> y, vector<vector<double> > f, doub
     return LI_1D( vector<double> {x[ilo], x[ihi]}, vector<double> {flo, fhi}, xP);
 }
 
+////////////////////////////////////////////////////////////////////////////////
 
-double LI_3D(vector<double> x, vector<double> y, vector<double> z, vector<vector<vector<double> > > f, double xP,
-        double yP, double zP){
-    double dx = x[1] - x[0];
+double LI_3D(const vector<double> &x, 
+             const vector<double> &y, 
+             const vector<double> &z, 
+             const vector<vector<vector<double> > > &f, 
+             const double xP, const double yP, const double zP){
 
-    int ilo = int(xP/dx);
-    if (ilo < 0){
-        ilo = 0;
-    }
-    else if (ilo >= x.size() - 1){
-        ilo = x.size() - 2;
-    }
-    int ihi = ilo + 1;
-
+    int ilo, ihi;
+    tie(ilo, ihi) = get_bounding_points(x, xP);
 
     ///////////////////// interpolate grid to yP, zP /////////////////
 
@@ -77,19 +93,17 @@ double LI_3D(vector<double> x, vector<double> y, vector<double> z, vector<vector
 
 }
 
+////////////////////////////////////////////////////////////////////////////////
 
-double LI_4D(vector<double> x, vector<double> y, vector<double> z, vector<double> w, vector<vector<vector<vector<double> > > > f,
-        double xP, double yP, double zP, double wP){
-    double dx = x[1] - x[0];
+double LI_4D(const vector<double> &x, 
+             const vector<double> &y, 
+             const vector<double> &z, 
+             const vector<double> &w, 
+             const vector<vector<vector<vector<double> > > > &f, 
+             const double xP, const double yP, const double zP, const double wP){
 
-    int ilo = int(xP/dx);
-    if (ilo <= 0){
-        ilo = 0;
-    }
-    else if (ilo >= x.size() - 1){
-        ilo = x.size() - 2;
-    }
-    int ihi = ilo +1;
+    int ilo, ihi;
+    tie(ilo, ihi) = get_bounding_points(x, xP);
 
     ////////////////// interpolate grid to yP, zP ////////////////////
 
@@ -100,21 +114,21 @@ double LI_4D(vector<double> x, vector<double> y, vector<double> z, vector<double
 
     return LI_1D( vector<double> {x[ilo], x[ihi]}, vector<double> {flo, fhi}, xP);
 
-    }
+}
 
+////////////////////////////////////////////////////////////////////////////////
 
-double LI_5D(vector<double> x, vector<double> y, vector<double> z, vector<double> w, vector<double> a,
-        vector<vector<vector<vector<vector<double> > > > > f, double xP, double yP, double zP, double wP, double aP){
-    double dx = x[1] - x[0];
+double LI_5D(const vector<double> &x, 
+             const vector<double> &y, 
+             const vector<double> &z, 
+             const vector<double> &w, 
+             const vector<double> &a, 
+             const vector<vector<vector<vector<vector<double> > > > > &f, 
+             const double xP, const double yP, const double zP, const double wP, const double aP){
 
-    int ilo = int(xP/dx);
-    if (ilo <= 0){
-        ilo = 0;
-    }
-    else if (ilo >= x.size() - 1){
-        ilo = x.size() - 2;
-    }
-    int ihi = ilo +1;
+    int ilo, ihi;
+    tie(ilo, ihi) = get_bounding_points(x, xP);
+
 
     ////////////////// interpolate grid to yP, zP ////////////////////
 
@@ -125,10 +139,15 @@ double LI_5D(vector<double> x, vector<double> y, vector<double> z, vector<double
 
     return LI_1D( vector<double> {x[ilo], x[ihi]}, vector<double> {flo, fhi}, xP);
 
-    }
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/*
+#include <cmath>
+#include <iostream>
+#include <iomanip>
 
-/*int main(){
+int main(){
     int Nx = 8;
     int Ny = 6;
 

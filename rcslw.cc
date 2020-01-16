@@ -54,10 +54,7 @@ rcslw::rcslw(const int    p_nGG,
     set_Falbdf_co2_co_h2o_at_P();
 
     Fmin = get_F_albdf(Cmin, Tg, Tg, Yco2, Yco, Yh2o, fvsoot);
-    cout << endl << "Fmin: " << Fmin << endl;//doldb
-    exit(0);
     Fmax = get_F_albdf(Cmax, Tg, Tg, Yco2, Yco, Yh2o, fvsoot);
-    cout << endl << "Fmax: " << Fmax << endl;
 
     set_Fpts();
 
@@ -92,16 +89,6 @@ void rcslw::get_k_a(double Tg, double Yco2, double Yco, double Yh2o, double fvso
     for(int j=0; j < nGGa; j++)
         Ct[j] = get_FI_albdf(Ft_pts[j], Tg, Tref, Yco2, Yco, Yh2o, fvsoot);
     
-    cout << "Ct =  ";
-    for(int j=0; j < nGGa; j++)
-        cout << Ct[j] <<  " ";
-    
-    cout << "\n\n"  <<  "C =  ";
-    for(int j=0; j < nGG; j++)
-        cout << C[j] << " "; 
-    
-    cout << "\n\n";
-
     double Nconc = P*101325/8.31446/Tg;    // mol/m3
     
     k.resize(nGGa);
@@ -112,11 +99,6 @@ void rcslw::get_k_a(double Tg, double Yco2, double Yco, double Yh2o, double fvso
     for(int j=0; j < nGGa; j++)
         FCt[j] = get_F_albdf(Ct[j], Tg, Tg, Yco2, Yco, Yh2o, fvsoot);
 
-    cout <<  "FCt =  ";
-    for(int j=0; j < nGGa; j++)
-        cout << FCt[j] << " ";
-    cout << "\n\n";
-    
     a.resize(nGGa);
     a[0] = FCt[0];
     for(int j=1; j < nGGa; j++)
@@ -168,7 +150,6 @@ double rcslw::get_F_albdf(double C, double Tg, double Tb, double Yco2, double Yc
     F_co  = LI_3D(            Tg_table, Tb_table, C_table, Falbdf_co,         Tg, Tb, CYco);
     F_h2o = LI_4D(Yh2o_table, Tg_table, Tb_table, C_table, Falbdf_h2o,  Yh2o, Tg, Tb, CYh2o);
 
-    cout << endl << "Fs: " << F_co2 << " " << F_co << " " << " " << F_h2o << endl;//doldb
     return F_co2 * F_co * F_h2o * F_albdf_soot(C, Tg, Tb, fvsoot);
 }
 
@@ -237,7 +218,7 @@ double rcslw::get_FI_albdf(double F, double Tg, double Tb, double Yco2, double Y
    double FFF = get_F_albdf(ccc, Tg, Tb, Yco2, Yco, Yh2o, fvsoot);
    double cccc = cc + (F-FF)*(ccc-cc)/(FFF-FF);
 
-   cout << "relative error:" << (F - get_F_albdf(ccc, Tg, Tb, Yco2, Yco, Yh2o, fvsoot))/F << "\n";
+   //cout << "relative error:" << (F - get_F_albdf(ccc, Tg, Tb, Yco2, Yco, Yh2o, fvsoot))/F << "\n";
 
    return cccc;
 
@@ -299,27 +280,20 @@ void rcslw::set_Fpts(){
     X[19] = vector<double> {-9.9804993053568758E-01, -9.8973945426638554E-01, -9.7484632859015352E-01, -9.5346633093352962E-01, -9.2574133204858433E-01, -8.9185573900463222E-01, -8.5203502193236214E-01, -8.0654416760531689E-01, -7.5568590375397071E-01, -6.9979868037918436E-01, -6.3925441582968168E-01, -5.7445602104780713E-01, -5.0583471792793111E-01, -4.3384716943237650E-01, -3.5897244047943500E-01, -2.8170880979016527E-01, -2.0257045389211670E-01, -1.2208402533786741E-01, -4.0785147904578239E-02,  4.0785147904578239E-02, 1.2208402533786741E-01, 2.0257045389211670E-01, 2.8170880979016527E-01, 3.5897244047943500E-01, 4.3384716943237650E-01, 5.0583471792793111E-01, 5.7445602104780713E-01, 6.3925441582968168E-01, 6.9979868037918436E-01, 7.5568590375397071E-01, 8.0654416760531689E-01, 8.5203502193236214E-01, 8.9185573900463222E-01, 9.2574133204858433E-01, 9.5346633093352962E-01, 9.7484632859015352E-01, 9.8973945426638554E-01, 9.9804993053568758E-01};
     X[20] = vector<double> {-9.9823770971055925E-01, -9.9072623869945708E-01, -9.7725994998377430E-01, -9.5791681921379168E-01, -9.3281280827867652E-01, -9.0209880696887434E-01, -8.6595950321225956E-01, -8.2461223083331170E-01, -7.7830565142651942E-01, -7.2731825518992710E-01, -6.7195668461417957E-01, -6.1255388966798030E-01, -5.4946712509512818E-01, -4.8307580168617870E-01, -4.1377920437160498E-01, -3.4199409082575849E-01, -2.6815218500725369E-01, -1.9269758070137111E-01, -1.1608407067525521E-01, -3.8772417506050816E-02, 3.8772417506050816E-02, 1.1608407067525521E-01, 1.9269758070137111E-01, 2.6815218500725369E-01, 3.4199409082575849E-01, 4.1377920437160498E-01, 4.8307580168617870E-01, 5.4946712509512818E-01, 6.1255388966798030E-01, 6.7195668461417957E-01, 7.2731825518992710E-01, 7.7830565142651942E-01, 8.2461223083331170E-01, 8.6595950321225956E-01, 9.0209880696887434E-01, 9.3281280827867652E-01, 9.5791681921379168E-01, 9.7725994998377430E-01, 9.9072623869945708E-01, 9.9823770971055925E-01};
 
-    F_pts.resize(nGG);
-    Ft_pts.resize(nGGa);                            // \tilde{F} grid
 
     vector<double> cumsum_w(nGG, W[nGG][nGG]);
     for(int i=1; i<nGG; i++)
         cumsum_w[i] = cumsum_w[i-1] + W[nGG][i+nGG];
 
+    Ft_pts.resize(nGGa);                            // \tilde{F} grid
     Ft_pts[0] = Fmin;
     for(int i=1; i<nGGa; i++)
         Ft_pts[i] = Fmin + (Fmax-Fmin)*cumsum_w[i-1];   
 
+    F_pts.resize(nGG);
     for(int i=nGG; i<X[nGG].size(); i++)
-        F_pts[i] = Fmin + X[nGG][i]*(Fmax - Fmin);    // F grid (vals bet. \tild{F} pnts)
+        F_pts[i-nGG] = Fmin + X[nGG][i]*(Fmax - Fmin);    // F grid (vals bet. \tild{F} pnts)
 
-    cout << "Ft_pts  ";
-    for(int i=0; i<nGGa; i++)
-        cout << Ft_pts[i] << "\n";
-
-    cout << "F_pts   ";
-    for(int i=0; i<nGG; i++)
-        cout << F_pts[i] << "\n";
 }
 
 ////////////////////////////////////////////////////////////////
