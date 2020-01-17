@@ -405,9 +405,9 @@ class rcslw():
 
 P      = 1.0       # atm
 Tg     = 1000      # gas temperature
-Yco2   = 0.9       # mole fraction co2
+Yco2   = 0.8       # mole fraction co2
 Yco    = 0.1       # mole fraction co
-Yh2o   = 0.00      # mole fraction h2o
+Yh2o   = 0.10      # mole fraction h2o
 nGG    = 3         # number of gray gases (not including the clear gas)
 fvsoot = 0.0      # soot volume fraction (=rho*Ysoot/rhoSoot, where Ysoot = mass frac)
 

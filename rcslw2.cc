@@ -3,8 +3,8 @@
  * Source file for class rcslw
  */
 
-#include "multilinear_interpolation_vector.h"
-#include "rcslw.h"
+#include "multilinear_interpolation.h"
+#include "rcslw2.h"
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -146,9 +146,9 @@ double rcslw::get_F_albdf(double C, double Tg, double Tb, double Yco2, double Yc
 
     double F_co2, F_co, F_h2o;
 
-    F_co2 = LI_3D(            Tg_table, Tb_table, C_table, Falbdf_co2,        Tg, Tb, CYco2);
-    F_co  = LI_3D(            Tg_table, Tb_table, C_table, Falbdf_co,         Tg, Tb, CYco);
-    F_h2o = LI_4D(Yh2o_table, Tg_table, Tb_table, C_table, Falbdf_h2o,  Yh2o, Tg, Tb, CYh2o);
+    F_co2 = LI_3D(nTg, nTb, nC, &Tg_table[0], &Tb_table[0], &C_table[0], &Falbdf_co2[0],        Tg, Tb, CYco2);
+    F_co  = LI_3D(nTg, nTb, nC, &Tg_table[0], &Tb_table[0], &C_table[0], &Falbdf_co[0],         Tg, Tb, CYco);
+    F_h2o = LI_4D(ny_h2o, nTg, nTb, nC, &Yh2o_table[0], &Tg_table[0], &Tb_table[0], &C_table[0], &Falbdf_h2o[0],  Yh2o, Tg, Tb, CYh2o);
 
     return F_co2 * F_co * F_h2o * F_albdf_soot(C, Tg, Tb, fvsoot);
 }
@@ -344,20 +344,15 @@ void rcslw::set_Falbdf_co2_co_h2o_at_P(){
     string co2_file1 = "ALBDF_Tables/co2_p" + Pres_1 + ".txt";
     string co2_file2 = "ALBDF_Tables/co2_p" + Pres_2 + ".txt";
 
-    vector<vector<vector<double> > > co2_F1(nTg, vector<vector<double> >(nTb, vector<double>(nC))); 
-    vector<vector<vector<double> > > co2_F2(nTg, vector<vector<double> >(nTb, vector<double>(nC))); 
-    Falbdf_co2.resize(nTg, vector<vector<double> >(nTb, vector<double>(nC)));
+    vector<double> co2_F1(nTg*nTb*nC);
+    vector<double> co2_F2(nTg*nTb*nC);
+    Falbdf_co2.resize(nTg*nTb*nC);
 
     get_FI_albdf_tables(co2_file1, nTg, nTb, nC, co2_F1);
     get_FI_albdf_tables(co2_file2, nTg, nTb, nC, co2_F2);
 
-    for (int i=0; i< nTg; i++){
-        for(int j=0; j<nTb; j++){
-            for(int k=0; k<nC; k++){
-                Falbdf_co2[i][j][k] = co2_F1[i][j][k]*(1-f) + co2_F2[i][j][k]*f;
-            }
-        }
-    }
+    for(int ind=0; ind<Falbdf_co2.size(); ++ind)
+        Falbdf_co2[ind] = co2_F1[ind]*(1-f) + co2_F2[ind]*f;
 
 
     //---------------------CO
@@ -365,42 +360,30 @@ void rcslw::set_Falbdf_co2_co_h2o_at_P(){
     string co_file1 = "ALBDF_Tables/co_p" + Pres_1 + ".txt";
     string co_file2 = "ALBDF_Tables/co_p" + Pres_2 + ".txt";
 
-    vector<vector<vector<double> > > co_F1(nTg, vector<vector<double> >(nTb, vector<double>(nC))); 
-    vector<vector<vector<double> > > co_F2(nTg, vector<vector<double> >(nTb, vector<double>(nC))); 
-    Falbdf_co.resize(nTg, vector<vector<double> >(nTb, vector<double>(nC)));
+    vector<double> co_F1(nTg*nTb*nC);
+    vector<double> co_F2(nTg*nTb*nC);
+    Falbdf_co.resize(nTg*nTb*nC);
 
     get_FI_albdf_tables(co_file1, nTg, nTb, nC, co_F1);
     get_FI_albdf_tables(co_file2, nTg, nTb, nC, co_F2);
 
-    for (int i=0; i< nTg; i++){
-        for(int j=0; j<nTb; j++){
-            for(int k=0; k<nC; k++){
-                Falbdf_co[i][j][k] = co_F1[i][j][k]*(1-f) + co_F2[i][j][k]*f;
-            }
-        }
-    } 
+    for(int ind=0; ind<Falbdf_co.size(); ++ind)
+        Falbdf_co[ind] = co_F1[ind]*(1-f) + co_F2[ind]*f;
 
     //---------------------H2O
    
     string h2o_file1 = "ALBDF_Tables/h2o_p" + Pres_1 + ".txt";
     string h2o_file2 = "ALBDF_Tables/h2o_p" + Pres_2 + ".txt";
 
-    vector<vector<vector<vector<double> > > > h2o_F1(ny_h2o, vector<vector<vector<double> > >(nTg, vector<vector<double> >(nTb, vector<double>(nC)))); 
-    vector<vector<vector<vector<double> > > > h2o_F2(ny_h2o, vector<vector<vector<double> > >(nTg, vector<vector<double> >(nTb, vector<double>(nC)))); 
-    Falbdf_h2o.resize(ny_h2o,vector<vector<vector<double> > >(nTg, vector<vector<double> >(nTb, vector<double>(nC))));
+    vector<double> h2o_F1(ny_h2o*nTg*nTb*nC); 
+    vector<double> h2o_F2(ny_h2o*nTg*nTb*nC); 
+    Falbdf_h2o.resize(ny_h2o*nTg*nTb*nC);
 
     get_FI_albdf_tables(h2o_file1, ny_h2o, nTg, nTb, nC, h2o_F1);
     get_FI_albdf_tables(h2o_file2, ny_h2o, nTg, nTb, nC, h2o_F2);
 
-    for(int i=0; i< ny_h2o; i++){
-        for (int j=0; j< nTg; j++){
-            for(int k=0; k<nTb; k++){
-                for(int n=0; n<nC; n++){
-                    Falbdf_h2o[i][j][k][n] = h2o_F1[i][j][k][n]*(1-f) + h2o_F2[i][j][k][n]*f;
-                }
-            }
-        }
-    }
+    for(int ind=0; ind<Falbdf_h2o.size(); ++ind)
+        Falbdf_h2o[ind] = h2o_F1[ind]*(1-f) + h2o_F2[ind]*f;
   
 }
     
@@ -409,7 +392,7 @@ void rcslw::set_Falbdf_co2_co_h2o_at_P(){
  */
 
 void rcslw::get_FI_albdf_tables(string Ptable_file_name, int nx, int ny, int nz, 
-        vector<vector<vector<double> > > &myarray){
+                                vector<double> &myarray){
 
     ifstream ifile;
     ifile.open(Ptable_file_name);
@@ -417,13 +400,9 @@ void rcslw::get_FI_albdf_tables(string Ptable_file_name, int nx, int ny, int nz,
         cout << endl << "error opening file: " << Ptable_file_name << endl;
         exit(0);
     }
-    for (int i=0; i< nx; i++){
-        for(int j=0; j<ny; j++){
-            for(int k=0; k<nz; k++){
-                ifile >> myarray[i][j][k];
-            }
-        }
-    }
+    int ntot = nx*ny*nz;
+    for(int ind=0; ind<ntot; ++ind)
+        ifile >> myarray[ind];
     ifile.close();
     
 }
@@ -433,7 +412,7 @@ void rcslw::get_FI_albdf_tables(string Ptable_file_name, int nx, int ny, int nz,
  */
 
 void rcslw::get_FI_albdf_tables(string Ptable_file_name, int nx, int ny, int nz, int nw,
-        vector<vector<vector<vector<double> > > > &myarray){
+                                vector<double> &myarray){
  
     ifstream ifile;
     ifile.open(Ptable_file_name);
@@ -441,15 +420,9 @@ void rcslw::get_FI_albdf_tables(string Ptable_file_name, int nx, int ny, int nz,
         cout << endl << "error opening file: " << Ptable_file_name << endl;
         exit(0);
     }
-    for (int i=0; i< nx; i++){
-        for(int j=0; j<ny; j++){
-            for(int k=0; k<nz; k++){
-                for(int n=0; n<nw; n++){
-                    ifile >> myarray[i][j][k][n];
-                }
-            }
-        }
-    }
+    int ntot = nx*ny*nz*nw;
+    for(int ind=0; ind<ntot; ++ind)
+        ifile >> myarray[ind];
     ifile.close();
     
 }
